@@ -18,8 +18,8 @@ test_that("qual_methods reads the method matrix schema", {
 
 test_that("duplicate model names are rejected", {
   tmp <- withr::local_tempfile(fileext = ".csv")
-  writeLines(c("name,source,dataset,domain,method,stochastic,strict,anchor,tol_override",
-               "M,lib,d.csv,popPK,focei,FALSE,TRUE,FALSE,",
-               "M,lib,d.csv,popPK,saem,TRUE,TRUE,FALSE,"), tmp)
+  writeLines(c("name,source,dataset,domain,method,stochastic,strict,anchor,tol_override,eta",
+               "M,lib,d.csv,popPK,focei,FALSE,TRUE,FALSE,,",
+               "M,lib,d.csv,popPK,saem,TRUE,TRUE,FALSE,,"), tmp)
   expect_error(qual_registry(path = tmp), "duplicate")
 })

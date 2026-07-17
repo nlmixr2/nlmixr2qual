@@ -14,7 +14,7 @@
 qual_registry <- function(path = .qual_pkg_file("models", "registry.csv")) {
   reg <- utils::read.csv(path, stringsAsFactors = FALSE, colClasses = "character")
   req <- c("name","source","dataset","domain","method","stochastic",
-           "strict","anchor","tol_override")
+           "strict","anchor","tol_override","eta")
   miss <- setdiff(req, names(reg))
   if (length(miss)) stop("registry missing columns: ", paste(miss, collapse = ", "))
   if (anyDuplicated(reg$name)) stop("duplicate model name(s) in registry")
