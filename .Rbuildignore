@@ -1,0 +1,7 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^docs$
+^data-raw$
+^run_qualification\.R$
+^qualify\.bat$
+^qualification_output$

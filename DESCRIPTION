@@ -1,0 +1,34 @@
+Package: nlmixr2qual
+Title: Qualification Suite for nlmixr2
+Version: 0.0.0.9000
+Authors@R:
+    person("Justin", "Wilkins", , "justin.wilkins@occams.com", role = c("aut", "cre"))
+Description: Reproducibility qualification of an nlmixr2 installation. Re-fits a
+    curated set of nlmixr2lib models against a shipped single-threaded canonical
+    baseline, checks parameter/OFV/SE reproduction within tolerance across all
+    estimation methods, qualifies multi-threaded fitting by a thread-invariance
+    check, and renders a Quarto qualification report with an overall PASS/FAIL
+    verdict.
+License: file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+Depends:
+    R (== 4.6.1)
+Imports:
+    jsonlite,
+    stats,
+    utils
+Suggests:
+    nlmixr2,
+    nlmixr2est,
+    nlmixr2lib,
+    nlmixr2data,
+    rxode2,
+    qs2,
+    ggplot2,
+    quarto,
+    testthat (>= 3.0.0),
+    withr
+Config/testthat/edition: 3
+Config/testthat/parallel: true
+Config/roxygen2/version: 8.0.0
