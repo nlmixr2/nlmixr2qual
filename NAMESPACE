@@ -2,6 +2,9 @@
 
 export(qual_compare)
 export(qual_extract_fit)
+export(qual_inner_threads)
 export(qual_methods)
 export(qual_registry)
+export(qual_set_threads)
+export(qual_thread_plan)
 export(qual_tolerance)

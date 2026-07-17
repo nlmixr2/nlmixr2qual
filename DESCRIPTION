@@ -16,9 +16,11 @@ Depends:
     R (== 4.6.1)
 Imports:
     jsonlite,
+    parallel,
     stats,
     utils
 Suggests:
+    data.table,
     nlmixr2,
     nlmixr2est,
     nlmixr2lib,
