@@ -1,0 +1,3 @@
+name,source,dataset,domain,method,stochastic,strict,anchor,tol_override
+PK_1cmt,lib,PK_1cmt_sim.csv,popPK,focei,FALSE,TRUE,TRUE,
+PK_2cmt,lib,PK_2cmt_sim.csv,popPK,focei,FALSE,TRUE,TRUE,

@@ -1,0 +1,3 @@
+method,category,stochastic,strict,needs_reff
+focei,Linearized,FALSE,TRUE,TRUE
+nlminb,Optimizer (NLM family),FALSE,TRUE,FALSE

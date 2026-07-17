@@ -2,4 +2,6 @@
 
 export(qual_compare)
 export(qual_extract_fit)
+export(qual_methods)
+export(qual_registry)
 export(qual_tolerance)
