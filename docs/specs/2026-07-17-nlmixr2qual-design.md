@@ -80,14 +80,41 @@ environment matching the baseline's recorded provenance.
 | D6 | Method coverage | **Primary method per model + a small method-coverage matrix** exercising every applicable estimation method |
 | D7 | Reporting | **Quarto report as the primary artifact**, verdict embedded; occamsqual-style plain-text verdict also emitted for pipeline compatibility |
 | D8 | Threading | **Single-threaded canonical baseline + multi-threaded thread-invariance check**; two parallelism layers never both active (§7.3) |
+| D9 | Model prep | **Bare PK templates augmented with IIV via `nlmixr2lib::addEta()`** per a registry `eta` column; same augmentation used for simulation, fit, and baseline (§3.0) |
 
 ---
 
 ## 3. Data provenance (D5)
 
+### 3.0 Model augmentation with random effects (D9)
+
+The bare `PK_*` templates in `nlmixr2lib` are **fixed-effects skeletons** — they
+carry `ini` starting values and a residual-error term but **no between-subject
+random effects (IIV)**. Fitting them as-is is a naive-pooled fit: no omegas to
+compare, a failing covariance step, and no exercise of what the population
+methods (SAEM/FOCEI/…) exist to do. A *population* qualification must fit genuine
+mixed-effects models.
+
+Therefore each registry entry carries an **`eta` specification** (the parameters
+that receive IIV), and the model is augmented before use via
+**`nlmixr2lib::addEta()`**. The **same augmentation is applied in all three
+places** so they stay identical: the one-time dataset simulation, the
+qualification-time fit (`qual_fit_entry`), and the baseline cut — all derive the
+augmented model from the registry `eta` column, the single source of truth. An
+empty `eta` means the model already carries its own random-effects structure
+(true of most literature models: Hansson, Schindler, the disease/therapeutic-area
+models) and is used verbatim.
+
+Augmentation makes the simple PK anchors real population models (estimable
+omegas, a working covariance step, meaningful SEs) while keeping them small and
+robust enough to fit under all 26 estimation methods.
+
+### 3.1 Pairing models with data
+
 Models in `nlmixr2lib` are **structural templates**: they carry initial
 parameter estimates and residual-error structure but **no data**. Fitting
-requires data, so each model is paired with a dataset by one of two routes:
+requires data (using the augmented model of §3.0), so each model is paired with a
+dataset by one of two routes:
 
 1. **Frozen simulated dataset (default).** Each model's dataset is simulated
    **exactly once, at package inception**, with a fixed seed via `rxode2` from

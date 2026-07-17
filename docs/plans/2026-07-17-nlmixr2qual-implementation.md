@@ -1201,17 +1201,19 @@ This test is **skipped unless nlmixr2 is installed** (it runs a real fit).
 
 ```r
 # test-fit-live.R
-test_that("qual_fit_entry fits a library model and returns a fingerprint", {
+test_that("qual_fit_entry fits an augmented population model and returns a fingerprint", {
   skip_if_not_installed("nlmixr2")
   skip_if_not_installed("nlmixr2lib")
   qual_set_threads(1L)
   entry <- list(name = "PK_1cmt", source = "lib", dataset = "PK_1cmt_sim.csv",
-                method = "focei", stochastic = FALSE)
+                method = "focei", stochastic = FALSE, eta = "lcl,lvc")
   fp <- qual_fit_entry(entry, category = "Linearized")
   expect_identical(fp$model, "PK_1cmt")
   expect_identical(fp$method, "focei")
   expect_true(is.finite(fp$ofv))
   expect_true(any(fp$params$ptype == "theta"))
+  # augmentation added IIV, so there must be at least one omega
+  expect_true(any(fp$params$ptype == "omega"))
 })
 ```
 
@@ -1225,25 +1227,46 @@ Expected: FAIL — `could not find function "qual_fit_entry"` (or SKIP if nlmixr
 ```r
 # fit.R
 
+#' Prepare a model: load it and augment with IIV per the registry `eta` spec
+#'
+#' The SINGLE source of model augmentation (spec 3.0 / D9). Simulation, fitting,
+#' and baseline capture all call this so they use an identical model.
+#' @param entry A registry row as a list (name, source, eta).
+#' @return An nlmixr2/rxode2 UI model, augmented with random effects if `eta` set.
+#' @export
+qual_prepare_model <- function(entry) {
+  model <- switch(entry$source,
+    lib  = nlmixr2lib::readModelDb(entry$name),
+    file = eval(parse(file = .qual_pkg_file("models", paste0(entry$name, ".R")))),
+    stop("unknown model source: ", entry$source))
+  eta <- entry$eta
+  if (!is.null(eta) && !is.na(eta) && nzchar(trimws(eta))) {
+    params <- trimws(strsplit(eta, ",")[[1]])
+    model <- nlmixr2lib::addEta(model, params)
+  }
+  model
+}
+
 #' Load a model, attach its frozen data, fit, and return a fingerprint
-#' @param entry A registry row as a list (name, source, dataset, method, stochastic).
+#' @param entry A registry row as a list (name, source, dataset, method, stochastic, eta).
 #' @param category The method's display category (from qual_methods()).
 #' @param threads Inner-thread count (defaults to the controller's current value).
 #' @return A fingerprint (see [qual_extract_fit()]).
 #' @export
 qual_fit_entry <- function(entry, category, threads = qual_inner_threads()) {
   stopifnot(requireNamespace("nlmixr2", quietly = TRUE))
-  model <- switch(entry$source,
-    lib = nlmixr2lib::readModelDb(entry$name),
-    stop("unknown model source: ", entry$source))
+  model <- qual_prepare_model(entry)
   data <- qual_read_dataset(entry$dataset)
-  ctl <- nlmixr2est::foceiControl()  # method-specific control resolved by est=
   fit <- nlmixr2::nlmixr2(model, data, est = entry$method)
   qual_extract_fit(fit, model = entry$name, method = entry$method,
                    category = category, stochastic = entry$stochastic,
                    threads = threads)
 }
 ```
+
+Note: `qual_prepare_model()` also handles `source = "file"` (used by the
+no-random-effect optimizer anchor in Task 15), so the Task 17 `switch` extension
+is already covered here — do not duplicate it.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -1611,40 +1634,51 @@ pattern** proven in Tasks 4 and 9. No new code.
 
 - [ ] **Step 1: Extend `simulate-datasets.R` with one block per model**
 
-For every model below, add a block modelled precisely on the PK_1cmt block
-(Task 9 Step 1): `readModelDb(<name>)`, a domain-appropriate `et()` design, a
-fixed `set.seed()`, `rxSolve()`, write `inst/data/<name>_sim.csv`. Where a
-canonical real dataset is used instead (marked *real*), source it from
-`nlmixr2data` and write it out verbatim once.
+For every model below, add a block modelled precisely on the augmented PK_1cmt
+block from Task 9: load `readModelDb(<name>)`, **augment per the `eta` column via
+`qual_prepare_model()` / `addEta()`** so the simulated data carry a between-subject
+signal, a domain-appropriate `et()` design, a fixed `set.seed()`, `rxSolve()`,
+then write `inst/data/<name>_sim.csv`. Where a canonical real dataset is used
+instead (marked *real*), source it from `nlmixr2data` and write it out verbatim
+once. **Simulate from the SAME augmented model the fit will use** (both derive
+from the registry `eta` column) so data and fit are consistent.
 
-Full model list (registry `name`, domain, primary `method`, dataset):
+The `eta` column below (spec §3.0 / D9): comma-separated parameter names to add
+IIV to. Values are given for the bare PK templates; for every literature/PD
+model, **inspect `readModelDb(name)$iniDf` first** — if it already has `eta`
+terms (most literature models do), leave `eta` **empty** (use verbatim); only add
+`eta` (typically on clearance + central volume, or the model's primary
+disposition parameters) if it has none. Confirm the augmented model actually fits
+before committing its dataset.
 
-| name | domain | method | dataset |
-|------|--------|--------|---------|
-| PK_1cmt | popPK | focei | PK_1cmt_sim.csv |
-| PK_2cmt | popPK | focei | PK_2cmt_sim.csv |
-| PK_3cmt | popPK | focei | PK_3cmt_sim.csv |
-| PK_1cmt_des | popPK | focei | PK_1cmt_des_sim.csv |
-| PK_2cmt_no_depot | popPK | focei | PK_2cmt_no_depot_sim.csv |
-| PK_1cmt_tmdd_qss | popPK | focei | PK_1cmt_tmdd_qss_sim.csv |
-| PK_2cmt_mAb_Davda_2014 | popPK | focei | PK_2cmt_mAb_Davda_2014_sim.csv |
-| Beal_2001_iv1cmt_bql | popPK | saem | Beal_2001_iv1cmt_bql_sim.csv |
-| indirect_1cpt_stim_kin | PKPD | focei | indirect_1cpt_stim_kin_sim.csv |
-| indirect_1cpt_inhi_kout | PKPD | focei | indirect_1cpt_inhi_kout_sim.csv |
-| indirect_1cpt_stim_kout | PKPD | focei | indirect_1cpt_stim_kout_sim.csv |
-| indirect_1cpt_inhi_kin | PKPD | focei | indirect_1cpt_inhi_kin_sim.csv |
-| Hansson_2013_sunitinib_myelosuppression | PKPD | saem | Hansson_2013_myelo_sim.csv |
-| Venisse_2008_caspofungin | PKPD | focei | Venisse_2008_caspofungin_sim.csv |
-| Delor_2013_alzheimer | disease | focei | Delor_2013_alzheimer_sim.csv |
-| Lee_2011_parkinson_progression | disease | focei | Lee_2011_parkinson_sim.csv |
-| VelezdeMendizabal_2013_multipleSclerosis | disease | saem | VelezdeMendizabal_2013_ms_sim.csv |
-| Choy_2016_T2DM_WHIG | disease | focei | Choy_2016_t2dm_sim.csv |
-| Hamuro_2017_DMD_6MWT | disease | focei | Hamuro_2017_dmd_sim.csv |
-| Schindler_2017_sunitinib_fatigue | ER | focei | Schindler_2017_fatigue_sim.csv |
-| Schindler_2017_sunitinib_hfs | ER | focei | Schindler_2017_hfs_sim.csv |
-| Schindler_2017_likert_pain | ER | saem | Schindler_2017_likert_sim.csv |
-| Chen_2017_TB_MTP_GPDI_mouse | ER | focei | Chen_2017_tb_mtp_sim.csv |
-| PerezRuixo_2015_oxaliplatin_platelet_dynamics | ER | focei | PerezRuixo_2015_platelet_sim.csv |
+Full model list (registry `name`, domain, primary `method`, dataset, eta):
+
+| name | domain | method | dataset | eta |
+|------|--------|--------|---------|-----|
+| PK_1cmt | popPK | focei | PK_1cmt_sim.csv | lcl,lvc |
+| PK_2cmt | popPK | focei | PK_2cmt_sim.csv | lcl,lvc |
+| PK_3cmt | popPK | focei | PK_3cmt_sim.csv | lcl,lvc |
+| PK_1cmt_des | popPK | focei | PK_1cmt_des_sim.csv | lcl,lvc |
+| PK_2cmt_no_depot | popPK | focei | PK_2cmt_no_depot_sim.csv | lcl,lvc |
+| PK_1cmt_tmdd_qss | popPK | focei | PK_1cmt_tmdd_qss_sim.csv | (inspect iniDf) |
+| PK_2cmt_mAb_Davda_2014 | popPK | focei | PK_2cmt_mAb_Davda_2014_sim.csv | (inspect iniDf) |
+| Beal_2001_iv1cmt_bql | popPK | saem | Beal_2001_iv1cmt_bql_sim.csv | (inspect iniDf) |
+| indirect_1cpt_stim_kin | PKPD | focei | indirect_1cpt_stim_kin_sim.csv | (inspect iniDf) |
+| indirect_1cpt_inhi_kout | PKPD | focei | indirect_1cpt_inhi_kout_sim.csv | (inspect iniDf) |
+| indirect_1cpt_stim_kout | PKPD | focei | indirect_1cpt_stim_kout_sim.csv | (inspect iniDf) |
+| indirect_1cpt_inhi_kin | PKPD | focei | indirect_1cpt_inhi_kin_sim.csv | (inspect iniDf) |
+| Hansson_2013_sunitinib_myelosuppression | PKPD | saem | Hansson_2013_myelo_sim.csv | (inspect iniDf) |
+| Venisse_2008_caspofungin | PKPD | focei | Venisse_2008_caspofungin_sim.csv | (inspect iniDf) |
+| Delor_2013_alzheimer | disease | focei | Delor_2013_alzheimer_sim.csv | (inspect iniDf) |
+| Lee_2011_parkinson_progression | disease | focei | Lee_2011_parkinson_sim.csv | (inspect iniDf) |
+| VelezdeMendizabal_2013_multipleSclerosis | disease | saem | VelezdeMendizabal_2013_ms_sim.csv | (inspect iniDf) |
+| Choy_2016_T2DM_WHIG | disease | focei | Choy_2016_t2dm_sim.csv | (inspect iniDf) |
+| Hamuro_2017_DMD_6MWT | disease | focei | Hamuro_2017_dmd_sim.csv | (inspect iniDf) |
+| Schindler_2017_sunitinib_fatigue | ER | focei | Schindler_2017_fatigue_sim.csv | (inspect iniDf) |
+| Schindler_2017_sunitinib_hfs | ER | focei | Schindler_2017_hfs_sim.csv | (inspect iniDf) |
+| Schindler_2017_likert_pain | ER | saem | Schindler_2017_likert_sim.csv | (inspect iniDf) |
+| Chen_2017_TB_MTP_GPDI_mouse | ER | focei | Chen_2017_tb_mtp_sim.csv | (inspect iniDf) |
+| PerezRuixo_2015_oxaliplatin_platelet_dynamics | ER | focei | PerezRuixo_2015_platelet_sim.csv | (inspect iniDf) |
 
 - [ ] **Step 2: Verify each `readModelDb(name)` resolves before adding its row**
 
@@ -1653,11 +1687,12 @@ Expected: every line ends `ok`. For any `MISSING`, substitute the nearest model 
 
 - [ ] **Step 3: Write `registry.csv` with all rows**
 
-Replace `inst/models/registry.csv` so it contains the header plus one row per
-model from Step 1. Set `stochastic=TRUE` for rows whose `method` is
-`saem` (and any other stochastic primary method); set `anchor=TRUE` only for
-`PK_1cmt` and `PK_2cmt`; `strict=TRUE` for all; `tol_override` blank unless a
-model is known-noisy.
+Replace `inst/models/registry.csv` so it contains the header (including the
+`eta` column added in Task 9) plus one row per model from Step 1. Set
+`stochastic=TRUE` for rows whose `method` is `saem` (and any other stochastic
+primary method); set `anchor=TRUE` only for `PK_1cmt` and `PK_2cmt`;
+`strict=TRUE` for all; `tol_override` blank unless a model is known-noisy; `eta`
+per the Step 1 table (quote values containing commas, e.g. `"lcl,lvc"`).
 
 - [ ] **Step 4: Generate all frozen datasets once, then commit them**
 
@@ -1898,7 +1933,9 @@ test_that("all 26 methods fit the anchor models and match baseline", {
     entry <- list(name = anchor,
                   source = if (anchor == "PK_1cmt") "lib" else "file",
                   dataset = "PK_1cmt_sim.csv", method = meth$method,
-                  stochastic = meth$stochastic)
+                  stochastic = meth$stochastic,
+                  # augment the mixed-effects anchor with IIV; the fixed anchor gets none
+                  eta = if (anchor == "PK_1cmt") "lcl,lvc" else "")
     base_file <- file.path(.qual_pkg_file("baseline"),
                            paste0(anchor, "__", meth$method, ".qs2"))
     skip_if_not(file.exists(base_file),
@@ -1912,16 +1949,13 @@ test_that("all 26 methods fit the anchor models and match baseline", {
 })
 ```
 
-- [ ] **Step 4: Extend `qual_fit_entry()` to load `source = "file"` anchors**
+- [ ] **Step 4: Confirm `source = "file"` anchors already load**
 
-Modify `R/fit.R` — add a branch to the `switch`:
-
-```r
-  model <- switch(entry$source,
-    lib  = nlmixr2lib::readModelDb(entry$name),
-    file = eval(parse(file = .qual_pkg_file("models", paste0(entry$name, ".R")))),
-    stop("unknown model source: ", entry$source))
-```
+No code change needed — `qual_prepare_model()` (built in Task 10) already handles
+`source = "file"` by parsing `inst/models/<name>.R`, and an empty `eta` means no
+augmentation. Just confirm `qual_prepare_model(list(name = "PK_1cmt_fixed",
+source = "file", eta = ""))` returns a model without error before running the
+suite.
 
 - [ ] **Step 5: Run the full test suite (parallel)**
 
