@@ -1257,7 +1257,7 @@ qual_fit_entry <- function(entry, category, threads = qual_inner_threads()) {
   stopifnot(requireNamespace("nlmixr2", quietly = TRUE))
   model <- qual_prepare_model(entry)
   data <- qual_read_dataset(entry$dataset)
-  fit <- nlmixr2::nlmixr2(model, data, est = entry$method)
+  fit <- nlmixr2est::nlmixr2(model, data, est = entry$method)  # nlmixr2() lives in nlmixr2est
   qual_extract_fit(fit, model = entry$name, method = entry$method,
                    category = category, stochastic = entry$stochastic,
                    threads = threads)
