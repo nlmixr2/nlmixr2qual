@@ -28,6 +28,7 @@ Suggests:
     rxode2,
     qs2,
     ggplot2,
+    knitr,
     quarto,
     testthat (>= 3.0.0),
     withr
