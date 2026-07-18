@@ -2,8 +2,10 @@
 
 export(qual_compare)
 export(qual_extract_fit)
+export(qual_fit_entry)
 export(qual_inner_threads)
 export(qual_methods)
+export(qual_prepare_model)
 export(qual_provenance)
 export(qual_read_dataset)
 export(qual_read_provenance)
