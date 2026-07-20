@@ -30,7 +30,7 @@ qual_compare <- function(run, base, overrides = NULL, invariance = FALSE) {
 
   add("ofv", "ofv", base$ofv, run$ofv)
 
-  keyed <- function(fp) setNames(seq_len(nrow(fp$params)),
+  keyed <- function(fp) stats::setNames(seq_len(nrow(fp$params)),
                                  paste0(fp$params$ptype, ":", fp$params$name))
   bk <- keyed(base); rk <- keyed(run)
   for (k in union(names(bk), names(rk))) {
@@ -44,8 +44,8 @@ qual_compare <- function(run, base, overrides = NULL, invariance = FALSE) {
     }
   }
 
-  bs <- setNames(base$shrink$value, base$shrink$name)
-  rs <- setNames(run$shrink$value, run$shrink$name)
+  bs <- stats::setNames(base$shrink$value, base$shrink$name)
+  rs <- stats::setNames(run$shrink$value, run$shrink$name)
   for (nm in union(names(bs), names(rs))) {
     add(paste0("shrink:", nm), "shrink",
         if (nm %in% names(bs)) bs[[nm]] else NA_real_,

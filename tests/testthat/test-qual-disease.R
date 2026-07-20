@@ -3,6 +3,8 @@
 # check it reproduces the shipped canonical baseline within tolerance.
 test_that("disease-progression models reproduce the canonical baseline", {
   skip_if_not_installed("nlmixr2")
+  skip_if(!nzchar(Sys.getenv("NLMIXR2QUAL_RUN_LIVE")),
+          "set NLMIXR2QUAL_RUN_LIVE=1 to run live qualification tests")
   skip_if_not_installed("nlmixr2lib")
   qual_set_threads(qual_inner_threads())  # pinned by setup.R / runner
 

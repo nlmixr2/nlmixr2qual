@@ -27,7 +27,7 @@ library(lotri)
 
 rxode2::setRxThreads(1L)
 
-out_dir <- file.path("inst", "data")
+out_dir <- file.path("inst", "extdata")
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
 # Write only if not already frozen; keeps committed datasets immutable.

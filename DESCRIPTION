@@ -26,6 +26,7 @@ Suggests:
     nlmixr2est,
     nlmixr2lib,
     nlmixr2data,
+    pkgload,
     rxode2,
     qs2,
     ggplot2,

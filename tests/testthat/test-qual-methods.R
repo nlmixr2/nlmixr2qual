@@ -9,6 +9,8 @@
 # what it can and never fails on an un-baselined method.
 test_that("catalogued methods reproduce the anchor baseline where available", {
   skip_if_not_installed("nlmixr2")
+  skip_if(!nzchar(Sys.getenv("NLMIXR2QUAL_RUN_LIVE")),
+          "set NLMIXR2QUAL_RUN_LIVE=1 to run live qualification tests")
   skip_if_not_installed("nlmixr2lib")
   qual_set_threads(qual_inner_threads())
 

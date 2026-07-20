@@ -12,7 +12,8 @@
 #' not benefit from all cores, and pinning the count to the full core count
 #' oversubscribes small problems and can crash the OpenMP/rxode2 solver on
 #' many-core machines. Cap it to a modest, stable value (default 4).
-#' @param cores Available cores. @param cap Maximum inner threads to use.
+#' @param cores Available cores.
+#' @param cap Maximum inner threads to use.
 #' @return An integer inner-thread count for the invariance stage.
 #' @export
 qual_invariance_threads <- function(cores = parallel::detectCores(), cap = 4L) {
@@ -61,8 +62,9 @@ qual_invariance_threads <- function(cores = parallel::detectCores(), cap = 4L) {
         } else {
           suppressMessages(library(nlmixr2qual))
         }
-        nlmixr2qual:::.qual_invariance_stage(registry, baseline_dir,
-                                             anchor_threads)
+        stage <- utils::getFromNamespace(".qual_invariance_stage",
+                                         "nlmixr2qual")
+        stage(registry, baseline_dir, anchor_threads)
       },
       args = list(registry = registry, baseline_dir = baseline_dir,
                   anchor_threads = anchor_threads, pkg_dir = pkg_dir),
@@ -77,7 +79,8 @@ qual_invariance_threads <- function(cores = parallel::detectCores(), cap = 4L) {
 }
 
 #' Run the qualification: strict single-threaded stage + invariance stage
-#' @param registry Model registry. @param baseline_dir Baseline directory.
+#' @param registry Model registry.
+#' @param baseline_dir Baseline directory.
 #' @param fitter Function(entry, category, threads) -> fingerprint.
 #' @param run_invariance Logical; run the serial multi-threaded stage.
 #' @param anchor_threads Inner threads for the invariance stage (capped for

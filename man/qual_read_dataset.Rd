@@ -7,7 +7,7 @@
 qual_read_dataset(ref)
 }
 \arguments{
-\item{ref}{The dataset file name under inst/data/ (or an absolute path).}
+\item{ref}{The dataset file name under inst/extdata/ (or an absolute path).}
 }
 \value{
 A data frame.

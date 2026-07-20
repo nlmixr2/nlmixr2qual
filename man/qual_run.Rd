@@ -9,20 +9,32 @@ qual_run(
   baseline_dir = .qual_pkg_file("baseline"),
   fitter = qual_fit_entry,
   run_invariance = TRUE,
-  anchor_threads = max(2L, parallel::detectCores()),
-  methods = qual_methods()
+  anchor_threads = qual_invariance_threads(),
+  methods = qual_methods(),
+  isolate_invariance = TRUE,
+  pkg_dir = if (file.exists("DESCRIPTION")) normalizePath(".") else ""
 )
 }
 \arguments{
-\item{registry}{Model registry. @param baseline_dir Baseline directory.}
+\item{registry}{Model registry.}
+
+\item{baseline_dir}{Baseline directory.}
 
 \item{fitter}{Function(entry, category, threads) -> fingerprint.}
 
 \item{run_invariance}{Logical; run the serial multi-threaded stage.}
 
-\item{anchor_threads}{Inner threads for the invariance stage.}
+\item{anchor_threads}{Inner threads for the invariance stage (capped for
+stability by default; see \code{\link[=qual_invariance_threads]{qual_invariance_threads()}}).}
 
 \item{methods}{Method table (method->category); defaults to qual_methods().}
+
+\item{isolate_invariance}{Logical; run the multi-threaded invariance stage in
+an isolated child process (crash-resilient). Ignored when a non-default
+\code{fitter} is supplied (e.g. unit-test stubs), which always run in-process.}
+
+\item{pkg_dir}{Package source directory for the isolated child to load in dev
+mode; "" means the child loads the installed package.}
 }
 \value{
 \code{list(results, invariance, provenance)}.
