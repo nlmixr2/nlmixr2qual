@@ -1,4 +1,6 @@
 package,version
-nlmixr2,3.0.0
-nlmixr2est,3.0.0
-rxode2,3.0.0
+nlmixr2,6.0.0
+nlmixr2est,6.2.0
+nlmixr2lib,0.3.2.9000
+nlmixr2data,2.0.10
+rxode2,5.1.3

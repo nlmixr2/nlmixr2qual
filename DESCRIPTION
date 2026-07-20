@@ -20,6 +20,7 @@ Imports:
     stats,
     utils
 Suggests:
+    callr,
     data.table,
     nlmixr2,
     nlmixr2est,
