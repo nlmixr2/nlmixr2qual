@@ -58,3 +58,12 @@ count is capped (`qual_invariance_threads()`, default 4) and the invariance stag
 runs in an isolated `callr` child process. If parallel `testthat` remains
 unstable in CI, keep running the live qualification via `run_qualification.R`
 (fresh process per stage) rather than the in-process test runner.
+
+**Corrupted rxode2 model cache → strict-stage crashes.** Running many
+concurrent nlmixr2 fits (parallel test files, `devtools::check`, and the
+baseline cut at the same time) can corrupt the shared rxode2 compiled-model
+cache (`rxode2::rxTempDir()` / `AppData/Local/R/cache/R/rxode2`), after which even
+the single-threaded strict stage crashes part-way through. Symptom: the runner
+dies mid-fit with no verdict and no `qualification_output/`. Remedy: run
+`rxode2::rxClean()` once, then re-run `run_qualification.R`. Avoid running the
+suite concurrently with other processes that compile the same models.
