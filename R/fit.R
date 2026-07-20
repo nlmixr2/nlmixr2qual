@@ -22,22 +22,26 @@ qual_prepare_model <- function(entry) {
   rxode2::rxode2(model)
 }
 
-.qual_focei_family <- c("fo", "foi", "foce", "focei", "focep")
+# Conditional-estimation methods driven by the FOCEi engine that accept
+# foceiControl(outerOpt=). First-order fo/foi are handled by the same engine but
+# reject the outerOpt control ("cannot find fo related control object"), so they
+# are deliberately excluded here and use their default control.
+.qual_focei_control_family <- c("foce", "focei", "focep")
 
 #' Stable estimation control for a method (or NULL for the method default)
 #'
-#' The FOCE(i) family's default outer optimizer (nlminb) reports a
+#' The conditional FOCE(i) methods' default outer optimizer (nlminb) reports a
 #' tolerance-sensitive "false convergence (8)" advisory at the optimum, which
 #' the fingerprint would record as `converged = FALSE` for every model and makes
 #' the convergence check meaningless (and brittle across platforms). bobyqa
-#' reaches the identical optimum with a clean "Normal exit", so it is pinned as
-#' the outer optimizer for that family. Other method families use their default
+#' reaches the identical optimum with a clean exit (convergence code 0), so it is
+#' pinned as the outer optimizer for that family. Other methods use their default
 #' control (NULL).
 #' @param method The est= method string.
 #' @return A control object accepted by [nlmixr2est::nlmixr2()], or NULL.
 #' @keywords internal
 qual_fit_control <- function(method) {
-  if (method %in% .qual_focei_family) {
+  if (method %in% .qual_focei_control_family) {
     return(nlmixr2est::foceiControl(outerOpt = "bobyqa"))
   }
   NULL
