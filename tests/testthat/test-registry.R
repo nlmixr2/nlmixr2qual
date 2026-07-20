@@ -16,6 +16,26 @@ test_that("qual_methods reads the method matrix schema", {
   expect_type(m$needs_reff, "logical")
 })
 
+test_that("method matrix has all 26 methods across 6 categories", {
+  m <- qual_methods()
+  expect_equal(nrow(m), 26)
+  expect_setequal(unique(m$category),
+    c("Linearized", "Integral approximation", "Stochastic EM",
+      "Nonparametric", "Machine learning", "Optimizer (NLM family)"))
+  # importance sampling is a stochastic reproducibility axis (spec 6.3)
+  expect_true(all(m$stochastic[m$method %in% c("imp", "impmap")]))
+})
+
+test_that("method matrix matches the installed nlmixr2est estimator set", {
+  skip_if_not_installed("nlmixr2est")
+  live <- nlmixr2est::nlmixr2AllEstType()$est
+  m <- qual_methods()
+  # every catalogued method must be a real installed estimator; the reverse is
+  # allowed to differ only by intentionally excluded utility "methods".
+  expect_true(all(m$method %in% live))
+  expect_length(setdiff(live, m$method), 0)
+})
+
 test_that("registry ships the robust core: >= 7 models, valid domains, PK anchors", {
   reg <- qual_registry()
   # Robust core shipped in this milestone: popPK (5) + disease (2). PKPD and ER

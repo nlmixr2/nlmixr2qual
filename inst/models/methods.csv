@@ -1,3 +1,27 @@
 method,category,stochastic,strict,needs_reff
+fo,Linearized,FALSE,TRUE,TRUE
+foi,Linearized,FALSE,TRUE,TRUE
+foce,Linearized,FALSE,TRUE,TRUE
 focei,Linearized,FALSE,TRUE,TRUE
+focep,Linearized,FALSE,TRUE,TRUE
+nlme,Linearized,FALSE,TRUE,TRUE
+laplace,Integral approximation,FALSE,TRUE,TRUE
+agq,Integral approximation,FALSE,TRUE,TRUE
+imp,Integral approximation,TRUE,TRUE,TRUE
+impmap,Integral approximation,TRUE,TRUE,TRUE
+saem,Stochastic EM,TRUE,TRUE,TRUE
+fsaem,Stochastic EM,TRUE,TRUE,TRUE
+qrpem,Stochastic EM,TRUE,TRUE,TRUE
+npag,Nonparametric,TRUE,TRUE,TRUE
+npb,Nonparametric,TRUE,TRUE,TRUE
+advi,Machine learning,TRUE,TRUE,TRUE
+vae,Machine learning,TRUE,TRUE,TRUE
+nlm,Optimizer (NLM family),FALSE,TRUE,FALSE
 nlminb,Optimizer (NLM family),FALSE,TRUE,FALSE
+bobyqa,Optimizer (NLM family),FALSE,TRUE,FALSE
+newuoa,Optimizer (NLM family),FALSE,TRUE,FALSE
+uobyqa,Optimizer (NLM family),FALSE,TRUE,FALSE
+n1qn1,Optimizer (NLM family),FALSE,TRUE,FALSE
+lbfgsb3c,Optimizer (NLM family),FALSE,TRUE,FALSE
+optim,Optimizer (NLM family),FALSE,TRUE,FALSE
+nls,Optimizer (NLM family),FALSE,TRUE,FALSE
