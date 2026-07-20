@@ -42,8 +42,19 @@ qual_extract_fit <- function(fit, model, method, category, stochastic, threads) 
   } else data.frame(name = character(), stype = character(),
                     value = numeric(), stringsAsFactors = FALSE)
 
-  msg <- fit$message
-  converged <- is.null(msg) || !nzchar(msg)
+  # Prefer the numeric optimizer convergence code (0 == converged): it is
+  # consistent across outer optimizers and platforms, unlike fit$message, which
+  # nlmixr2 populates with the optimizer's exit string even on success (e.g.
+  # "Normal exit from bobyqa"). Fall back to message-emptiness only when no
+  # numeric code is present (e.g. the synthetic fixtures in the unit tests).
+  conv_code <- fit$convergence
+  converged <- if (!is.null(conv_code) && length(conv_code) == 1L &&
+                   is.numeric(conv_code)) {
+    conv_code == 0
+  } else {
+    msg <- fit$message
+    is.null(msg) || !nzchar(msg)
+  }
   cm <- fit$covMethod
   covMethod <- if (is.null(cm)) "" else as.character(cm)
 

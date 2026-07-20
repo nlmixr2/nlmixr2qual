@@ -22,6 +22,27 @@ qual_prepare_model <- function(entry) {
   rxode2::rxode2(model)
 }
 
+.qual_focei_family <- c("fo", "foi", "foce", "focei", "focep")
+
+#' Stable estimation control for a method (or NULL for the method default)
+#'
+#' The FOCE(i) family's default outer optimizer (nlminb) reports a
+#' tolerance-sensitive "false convergence (8)" advisory at the optimum, which
+#' the fingerprint would record as `converged = FALSE` for every model and makes
+#' the convergence check meaningless (and brittle across platforms). bobyqa
+#' reaches the identical optimum with a clean "Normal exit", so it is pinned as
+#' the outer optimizer for that family. Other method families use their default
+#' control (NULL).
+#' @param method The est= method string.
+#' @return A control object accepted by [nlmixr2est::nlmixr2()], or NULL.
+#' @keywords internal
+qual_fit_control <- function(method) {
+  if (method %in% .qual_focei_family) {
+    return(nlmixr2est::foceiControl(outerOpt = "bobyqa"))
+  }
+  NULL
+}
+
 #' Load a model, attach its frozen data, fit, and return a fingerprint
 #' @param entry A registry row as a list (name, source, dataset, method, stochastic, eta).
 #' @param category The method's display category (from qual_methods()).
@@ -32,10 +53,15 @@ qual_fit_entry <- function(entry, category, threads = qual_inner_threads()) {
   stopifnot(requireNamespace("nlmixr2", quietly = TRUE))
   model <- qual_prepare_model(entry)
   data <- qual_read_dataset(entry$dataset)
+  control <- qual_fit_control(entry$method)
   # nlmixr2() the estimation entry point is defined in nlmixr2est and
   # re-exported onto the search path by library(nlmixr2), but not exported
   # from the nlmixr2 namespace itself, so it must be called via nlmixr2est::.
-  fit <- nlmixr2est::nlmixr2(model, data, est = entry$method)
+  fit <- if (is.null(control)) {
+    nlmixr2est::nlmixr2(model, data, est = entry$method)
+  } else {
+    nlmixr2est::nlmixr2(model, data, est = entry$method, control = control)
+  }
   qual_extract_fit(fit, model = entry$name, method = entry$method,
                    category = category, stochastic = entry$stochastic,
                    threads = threads)
