@@ -1,8 +1,9 @@
 # nlmixr2qual — models and estimation methods
 
-This document describes what the qualification suite currently covers: the seven
-`nlmixr2lib` models it re-fits, the estimation methods it exercises, the as-fit
-model code, and a spaghetti plot of each frozen dataset.
+This document describes what the qualification suite currently covers: the eight
+models it re-fits (seven `nlmixr2lib` models plus the canonical theophylline
+example on real data), the estimation methods it exercises, the as-fit model
+code, and a spaghetti plot of each frozen dataset.
 
 > **Reproducibility, not correctness.** These models and datasets are a frozen
 > *regression reference*. A qualification PASS means an installation reproduces
@@ -15,6 +16,7 @@ model code, and a spaghetti plot of each frozen dataset.
 
 | Model | Domain | Structure | Primary method | IIV (`eta`) |
 |---|---|---|---|---|
+| `theo_1cmt` | popPK | 1-compartment oral, solved (`linCmt`) — **real** theophylline data | focei | own (Ka, CL, V) |
 | `PK_1cmt` | popPK | 1-compartment oral, solved (`linCmt`) | focei | added on CL, V |
 | `PK_2cmt` | popPK | 2-compartment oral, solved | focei | added on CL, V |
 | `PK_3cmt` | popPK | 3-compartment oral, solved | focei | added on CL, V |
@@ -23,16 +25,49 @@ model code, and a spaghetti plot of each frozen dataset.
 | `Lee_2011_parkinson_progression` | disease | UPDRS disease-progression + symptomatic effect | focei | own (slope, symptomatic) |
 | `Hamuro_2017_DMD_6MWT` | disease | Bilinear 6-minute-walk vs age | focei | own (both slopes) |
 
-The five bare PK templates ship with fixed effects only; the suite augments each
-with between-subject variability (IIV) on clearance (`lcl`) and central volume
-(`lvc`) via `nlmixr2lib::addEta()`, so there is a real random-effect signal to
-estimate. The two disease models already carry their own IIV and are used
-verbatim. Augmentation is applied identically in simulation, fitting, and
+The five bare `PK_*` templates ship with fixed effects only; the suite augments
+each with between-subject variability (IIV) on clearance (`lcl`) and central
+volume (`lvc`) via `nlmixr2lib::addEta()`, so there is a real random-effect signal
+to estimate. `theo_1cmt` (the canonical nlmixr2 example, fit to the **real**
+theophylline dataset) and the two disease models already carry their own IIV and
+are used verbatim. Augmentation is applied identically in simulation, fitting, and
 baseline capture through the shared `qual_prepare_model()` helper.
 
 ---
 
 ## popPK models
+
+### theo_1cmt — one-compartment oral (real theophylline data)
+
+The canonical nlmixr2 one-compartment oral example, and the suite's base/sanity
+case — the only model fit to **real** data rather than a simulated reference. It
+uses the classic theophylline single-dose dataset shipped with the stack
+(`nlmixr2data::theo_sd`: 12 subjects, one oral dose each), frozen verbatim to
+`inst/extdata/theo_sd.csv`. First-order absorption into one disposition
+compartment solved with `linCmt()`, with IIV on `Ka`, `CL`, and `V` and an
+additive residual. Used verbatim (`source = "file"`,
+[`inst/models/theo_1cmt.R`](../inst/models/theo_1cmt.R)); its `eta` in the
+registry is blank.
+
+```r
+ini({
+  tka <- 0.45                   # log Ka
+  tcl <- log(c(0, 2.7, 100))    # log CL, with lower/upper bounds
+  tv  <- 3.45                   # log V
+  eta.ka ~ 0.6
+  eta.cl ~ 0.3
+  eta.v  ~ 0.1
+  add.sd <- 0.7                 # additive residual SD
+})
+model({
+  ka <- exp(tka + eta.ka)
+  cl <- exp(tcl + eta.cl)
+  v  <- exp(tv  + eta.v)
+  linCmt() ~ add(add.sd)
+})
+```
+
+![theo_1cmt spaghetti plot](figures/theo_1cmt.png)
 
 ### PK_1cmt — one-compartment oral
 
@@ -248,14 +283,16 @@ model({
 ## Datasets and simulation design
 
 Each model has one permanently frozen dataset under
-[`inst/extdata/`](../inst/extdata). The PK datasets are 32 subjects dosed across
-four levels (50/100/150/200 mg) with samples at 0.25–24 h; the disease datasets
-are 40 subjects followed longitudinally (Lee: 0–24 months, half randomised to
-active treatment; Hamuro: seven visits over three years from a 5–10 year baseline
-age). All were simulated once, single-threaded, from the same augmented model
-used for fitting, at a fixed seed. Spaghetti plots above use the Okabe–Ito
-colourblind-safe palette, colouring PK profiles by dose and the Lee profiles by
-treatment arm.
+[`inst/extdata/`](../inst/extdata). `theo_1cmt` uses **real** data — the classic
+`nlmixr2data::theo_sd` theophylline set (12 subjects, one oral dose, samples to
+~24 h) written out verbatim. The simulated `PK_*` datasets are 32 subjects dosed
+across four levels (50/100/150/200 mg) with samples at 0.25–24 h; the simulated
+disease datasets are 40 subjects followed longitudinally (Lee: 0–24 months, half
+randomised to active treatment; Hamuro: seven visits over three years from a 5–10
+year baseline age). The simulated sets were generated once, single-threaded, from
+the same augmented model used for fitting, at a fixed seed. Spaghetti plots above
+use the Okabe–Ito colourblind-safe palette, colouring `PK_*` profiles by dose and
+the Lee profiles by treatment arm.
 
 ---
 

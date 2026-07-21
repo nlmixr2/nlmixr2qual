@@ -49,23 +49,17 @@ Recommendation: try (1) first — it is the smallest change and keeps the model.
 After the recut, re-cut `Hamuro_2017_DMD_6MWT__focei.qs2`, regenerate the
 spaghetti plot, and drop the "negative values" caveat from `models-and-methods.md`.
 
-### 0.2 Add the theophylline one-compartment model as a base case (real data)
+### 0.2 Add the theophylline one-compartment model as a base case (real data) — ✅ DONE 2026-07-21
 
-Add the canonical nlmixr2 **one-compartment oral theophylline** model as a
-base/sanity popPK case, fit to the **real** dataset shipped with the stack
-(`nlmixr2data::theo_sd`, 12 subjects, single oral dose) — not a simulated one.
-This gives the suite a textbook, well-behaved anchor built on genuine data.
-
-- **Data:** write `theo_sd` out verbatim once to `inst/extdata/theo_sd.csv`
-  (real data → frozen like the simulated sets; confirm its columns map to
-  ID/TIME/DV/AMT/EVID/CMT as the fitter expects).
-- **Model:** the standard example — `ka`, `cl`, `v` with IIV on each and an
-  additive (or combined) residual. It is not a bare `PK_*` template, so ship it as
-  a `source = "file"` model (`inst/models/theo_1cmt.R`, loaded verbatim by
-  `qual_prepare_model()` exactly like `PK_1cmt_fixed.R`), `eta` blank.
-- **Registry:** one popPK row (`theo_1cmt`, `source=file`, `dataset=theo_sd.csv`,
-  `method=focei`, `strict=TRUE`); consider making it an additional anchor.
-- Cut its baseline, add it to the popPK domain test and to `models-and-methods.md`.
+Implemented: `theo_1cmt` — the canonical nlmixr2 one-compartment oral model
+(solved `linCmt()`, IIV on Ka/CL/V, additive residual), fit to the **real**
+`nlmixr2data::theo_sd` dataset frozen verbatim to `inst/extdata/theo_sd.csv`
+(144 rows, 12 subjects). Shipped as `source = "file"`
+(`inst/models/theo_1cmt.R`), registry row `theo_1cmt` (popPK, focei, strict,
+**non-anchor** — kept non-anchor so the anchor set stays `{PK_1cmt, PK_2cmt}` and
+its registry-test assertion is unchanged). Baseline `theo_1cmt__focei.qs2` cut
+(OFV 116.80, converged, cov `r,s`); reproduces its baseline (compare pass). Added
+to `models-and-methods.md` with a spaghetti plot. R CMD check remains OK.
 
 ### 0.3 Drop FOCE as the anchor method; use SAEM instead
 

@@ -1,4 +1,5 @@
 name,source,dataset,domain,method,stochastic,strict,anchor,tol_override,eta
+theo_1cmt,file,theo_sd.csv,popPK,focei,FALSE,TRUE,FALSE,,
 PK_1cmt,lib,PK_1cmt_sim.csv,popPK,focei,FALSE,TRUE,TRUE,,"lcl,lvc"
 PK_2cmt,lib,PK_2cmt_sim.csv,popPK,focei,FALSE,TRUE,TRUE,,"lcl,lvc"
 PK_3cmt,lib,PK_3cmt_sim.csv,popPK,focei,FALSE,TRUE,FALSE,,"lcl,lvc"
