@@ -6,6 +6,86 @@ they need bespoke work well beyond the "one registry row + one `et()` block"
 pattern the core uses. They are captured here so a later phase can pick them up
 with full context.
 
+## 0. Next actions — requested 2026-07-21
+
+Three specific changes to make before the broader deferred work below. Each
+touches the frozen datasets and/or the shipped baseline, so each ends with a
+deliberate recut and a refresh of [`models-and-methods.md`](models-and-methods.md).
+
+### 0.1 Replace the Hamuro dataset design — no invalid (negative) simulated data
+
+**Problem.** The frozen `Hamuro_2017_dmd_sim.csv` contains negative 6-minute-walk
+distances for the steepest decliners: the verbatim model uses an **additive**
+residual (`walkDist ~ add(addSd)`, SD ≈ 57 m) and a steep decline arm, so at older
+ages prediction + noise crosses zero. A qualification test suite must not ship
+physically invalid data, even as a regression reference.
+
+**Constraint.** The model is used *verbatim* (it carries its own IIV), so the
+error model (`add`) cannot be changed without abandoning the "verbatim template"
+principle. Only the **simulation design** (age range, follow-up, n) is ours to
+choose.
+
+**Approach — in order of preference:**
+
+1. **Bounded-age recut.** Restrict the baseline age and follow-up so the whole
+   simulated population stays comfortably positive. The decline arm
+   (`walk_decl = 1298 − 84.9·AGE`, with IIV widening the slope to roughly
+   −67…−107 m/yr) drops toward the noise floor past ~age 11–12; keeping
+   **max age ≲ 10** leaves even the steepest decliner (worst-case IIV − 3σ noise)
+   above zero while still exercising the dev/decline `min()` crossover (~age 9.8).
+   Add `stopifnot(all(DV > 0))` to the sim block so an out-of-range design fails
+   loudly.
+2. **Truncated-at-zero resampling.** If a positive design that still exercises the
+   decline arm proves too tight, resample any subject-observation whose simulated
+   `DV ≤ 0` (a truncated-normal residual). Keeps the model and the age range but
+   slightly perturbs the residual distribution — acceptable for a regression
+   reference, note it in provenance.
+3. **Replace the model.** If neither is satisfactory, swap Hamuro for an
+   alternative disease-progression model with a naturally non-negative endpoint
+   (candidate short-list to be drawn from the `nlmixr2lib` PD/therapeuticArea sets,
+   verified to fit cleanly single-threaded like Lee/Hamuro were).
+
+Recommendation: try (1) first — it is the smallest change and keeps the model.
+After the recut, re-cut `Hamuro_2017_DMD_6MWT__focei.qs2`, regenerate the
+spaghetti plot, and drop the "negative values" caveat from `models-and-methods.md`.
+
+### 0.2 Add the theophylline one-compartment model as a base case (real data)
+
+Add the canonical nlmixr2 **one-compartment oral theophylline** model as a
+base/sanity popPK case, fit to the **real** dataset shipped with the stack
+(`nlmixr2data::theo_sd`, 12 subjects, single oral dose) — not a simulated one.
+This gives the suite a textbook, well-behaved anchor built on genuine data.
+
+- **Data:** write `theo_sd` out verbatim once to `inst/extdata/theo_sd.csv`
+  (real data → frozen like the simulated sets; confirm its columns map to
+  ID/TIME/DV/AMT/EVID/CMT as the fitter expects).
+- **Model:** the standard example — `ka`, `cl`, `v` with IIV on each and an
+  additive (or combined) residual. It is not a bare `PK_*` template, so ship it as
+  a `source = "file"` model (`inst/models/theo_1cmt.R`, loaded verbatim by
+  `qual_prepare_model()` exactly like `PK_1cmt_fixed.R`), `eta` blank.
+- **Registry:** one popPK row (`theo_1cmt`, `source=file`, `dataset=theo_sd.csv`,
+  `method=focei`, `strict=TRUE`); consider making it an additional anchor.
+- Cut its baseline, add it to the popPK domain test and to `models-and-methods.md`.
+
+### 0.3 Drop FOCE as the anchor method; use SAEM instead
+
+Replace `foce` in the method-coverage anchor set with **`saem`** (stochastic
+approximation EM) — the oldest and most robust NLME estimation method, and a more
+meaningful second anchor than FOCE-without-interaction.
+
+- Remove the `PK_1cmt__foce.qs2` anchor baseline; cut `PK_1cmt__saem.qs2` instead.
+- **SAEM is stochastic**, so reproducibility requires a **pinned seed** (and fixed
+  `nBurn`/`nEm` iteration counts) via `saemControl(seed = …)`. Extend
+  `qual_fit_control()` to return the pinned SAEM control for `est = "saem"` (it
+  currently only special-cases the FOCE-conditional family → `bobyqa`).
+- Qualify SAEM under the **looser stochastic tolerance** (`qual_tolerance(...,
+  stochastic = TRUE)`); it is already flagged `stochastic = TRUE` in
+  `methods.csv`. Decide whether it gates the verdict (strict) or is
+  informational — recommend **informational** first (spec §6.3), tighten to strict
+  only if seed-pinned reproduction proves tight across a couple of runs.
+- Update `test-qual-methods.R`, the coverage table and prose in
+  `models-and-methods.md`, and note the seed in the baseline provenance.
+
 ## 1. Additional models (registry breadth)
 
 The core registry covers 7 models across 2 domains (popPK, disease). The
