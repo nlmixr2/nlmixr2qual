@@ -1,9 +1,8 @@
 name,source,dataset,domain,method,stochastic,strict,anchor,tol_override,eta
-theo_1cmt,file,theo_sd.csv,popPK,focei,FALSE,TRUE,FALSE,,
-PK_1cmt,lib,PK_1cmt_sim.csv,popPK,focei,FALSE,TRUE,TRUE,,"lcl,lvc"
+theo_1cmt,file,theo_sd.csv,popPK,focei,FALSE,TRUE,TRUE,,
+theo_1cmt_des,file,theo_sd.csv,popPK,focei,FALSE,TRUE,FALSE,,
 PK_2cmt,lib,PK_2cmt_sim.csv,popPK,focei,FALSE,TRUE,TRUE,,"lcl,lvc"
 PK_3cmt,lib,PK_3cmt_sim.csv,popPK,focei,FALSE,TRUE,FALSE,,"lcl,lvc"
-PK_1cmt_des,lib,PK_1cmt_des_sim.csv,popPK,focei,FALSE,TRUE,FALSE,,"lcl,lvc"
 PK_2cmt_no_depot,lib,PK_2cmt_no_depot_sim.csv,popPK,focei,FALSE,TRUE,FALSE,,"lcl,lvc"
 Lee_2011_parkinson_progression,lib,Lee_2011_parkinson_sim.csv,disease,focei,FALSE,TRUE,FALSE,,
 Hamuro_2017_DMD_6MWT,lib,Hamuro_2017_dmd_sim.csv,disease,focei,FALSE,TRUE,FALSE,,

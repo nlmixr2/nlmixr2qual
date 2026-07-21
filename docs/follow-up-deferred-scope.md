@@ -67,7 +67,7 @@ Replace `foce` in the method-coverage anchor set with **`saem`** (stochastic
 approximation EM) — the oldest and most robust NLME estimation method, and a more
 meaningful second anchor than FOCE-without-interaction.
 
-- Remove the `PK_1cmt__foce.qs2` anchor baseline; cut `PK_1cmt__saem.qs2` instead.
+- Remove the `theo_1cmt__foce.qs2` anchor baseline; cut `theo_1cmt__saem.qs2` instead.
 - **SAEM is stochastic**, so reproducibility requires a **pinned seed** (and fixed
   `nBurn`/`nEm` iteration counts) via `saemControl(seed = …)`. Extend
   `qual_fit_control()` to return the pinned SAEM control for `est = "saem"` (it
@@ -122,7 +122,7 @@ baselines for the remaining methods and confirm each fits the anchor cleanly:
   flagged in the original plan's self-review as an unexercised extension point.
 - **Optimizer (NLM family)**: `nlm`, `nlminb`, `bobyqa`, `newuoa`, `uobyqa`,
   `n1qn1`, `lbfgsb3c`, `optim`, `nls` — fit the fixed-effect-only anchor
-  `PK_1cmt_fixed` (`needs_reff = FALSE`).
+  `theo_1cmt_fixed` (`needs_reff = FALSE`).
 
 ## 3. Environment robustness
 

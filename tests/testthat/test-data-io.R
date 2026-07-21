@@ -1,6 +1,6 @@
 # test-data-io.R
 test_that("qual_read_dataset loads a frozen dataset by ref", {
-  d <- qual_read_dataset("PK_1cmt_sim.csv")
+  d <- qual_read_dataset("theo_sd.csv")
   expect_s3_class(d, "data.frame")
   expect_true(all(c("ID","TIME","DV","AMT","EVID") %in% names(d)))
   expect_gt(nrow(d), 0)

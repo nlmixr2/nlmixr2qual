@@ -6,7 +6,7 @@ test_that("qual_registry reads and validates model rows", {
                     "stochastic","strict","anchor") %in% names(reg)))
   expect_type(reg$stochastic, "logical")
   expect_type(reg$strict, "logical")
-  expect_true("PK_1cmt" %in% reg$name)
+  expect_true("theo_1cmt" %in% reg$name)
 })
 
 test_that("qual_methods reads the method matrix schema", {
@@ -44,7 +44,7 @@ test_that("registry ships the robust core: >= 7 models, valid domains, PK anchor
   expect_true(all(reg$domain %in% c("popPK", "PKPD", "disease", "ER")))
   expect_true(all(c("popPK", "disease") %in% reg$domain))
   # anchors (the thread-invariance re-fit set) are the two simplest popPK models
-  expect_setequal(reg$name[reg$anchor], c("PK_1cmt", "PK_2cmt"))
+  expect_setequal(reg$name[reg$anchor], c("theo_1cmt", "PK_2cmt"))
   # every registry dataset must be present under inst/extdata/
   for (ds in reg$dataset) {
     expect_true(file.exists(.qual_pkg_file("extdata", ds)), info = ds)

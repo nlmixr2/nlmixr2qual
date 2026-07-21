@@ -44,8 +44,8 @@ write_frozen <- function(df, file) {
 
 # ---- PK family helper ------------------------------------------------------
 #
-# The shipped bare PK templates (PK_1cmt, PK_2cmt, PK_3cmt, PK_1cmt_des,
-# PK_2cmt_no_depot) have NO random effects. Per the registry `eta` column they
+# The shipped bare PK templates (PK_2cmt, PK_3cmt, PK_2cmt_no_depot) have NO
+# random effects. Per the registry `eta` column they
 # are augmented with IIV on lcl and lvc via nlmixr2lib::addEta() -- this
 # augmented model (real etaLcl/etaLvc random effects and a real omega) is both
 # the model the data is simulated from AND the model qualified against the
@@ -95,12 +95,11 @@ sim_pk_family <- function(name, file, oral = TRUE, seed = 20260717,
   write_frozen(final, file)
 }
 
-# PK_1cmt keeps its original committed values (frozen since 2026-07-17); the
-# guard in write_frozen() prevents this call from altering that file.
-sim_pk_family("PK_1cmt",          "PK_1cmt_sim.csv",          oral = TRUE)
+# The one-compartment slots (solved + ODE) are now covered by the theo_1cmt /
+# theo_1cmt_des models on real theophylline data, so no bare 1-cmt template is
+# simulated here.
 sim_pk_family("PK_2cmt",          "PK_2cmt_sim.csv",          oral = TRUE)
 sim_pk_family("PK_3cmt",          "PK_3cmt_sim.csv",          oral = TRUE)
-sim_pk_family("PK_1cmt_des",      "PK_1cmt_des_sim.csv",      oral = TRUE)
 sim_pk_family("PK_2cmt_no_depot", "PK_2cmt_no_depot_sim.csv", oral = FALSE)
 
 # ---- Lee_2011_parkinson_progression (disease) ------------------------------

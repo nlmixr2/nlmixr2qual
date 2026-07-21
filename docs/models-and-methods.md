@@ -1,9 +1,10 @@
 # nlmixr2qual — models and estimation methods
 
-This document describes what the qualification suite currently covers: the eight
-models it re-fits (seven `nlmixr2lib` models plus the canonical theophylline
-example on real data), the estimation methods it exercises, the as-fit model
-code, and a spaghetti plot of each frozen dataset.
+This document describes what the qualification suite currently covers: the seven
+models it re-fits (the canonical theophylline example on real data in two
+solver variants, three `nlmixr2lib` PK templates, and two disease models), the
+estimation methods it exercises, the as-fit model code, and a spaghetti plot of
+each frozen dataset.
 
 > **Reproducibility, not correctness.** These models and datasets are a frozen
 > *regression reference*. A qualification PASS means an installation reproduces
@@ -16,19 +17,19 @@ code, and a spaghetti plot of each frozen dataset.
 
 | Model | Domain | Structure | Primary method | IIV (`eta`) |
 |---|---|---|---|---|
-| `theo_1cmt` | popPK | 1-compartment oral, solved (`linCmt`) — **real** theophylline data | focei | own (Ka, CL, V) |
-| `PK_1cmt` | popPK | 1-compartment oral, solved (`linCmt`) | focei | added on CL, V |
-| `PK_2cmt` | popPK | 2-compartment oral, solved | focei | added on CL, V |
+| `theo_1cmt` | popPK | 1-compartment oral, solved (`linCmt`) — **real** theophylline data (**anchor**) | focei | own (Ka, CL, V) |
+| `theo_1cmt_des` | popPK | 1-compartment oral, explicit ODEs — **real** theophylline data | focei | own (Ka, CL, V) |
+| `PK_2cmt` | popPK | 2-compartment oral, solved (**anchor**) | focei | added on CL, V |
 | `PK_3cmt` | popPK | 3-compartment oral, solved | focei | added on CL, V |
-| `PK_1cmt_des` | popPK | 1-compartment oral, explicit ODEs | focei | added on CL, V |
 | `PK_2cmt_no_depot` | popPK | 2-compartment IV, explicit ODEs | focei | added on CL, V |
 | `Lee_2011_parkinson_progression` | disease | UPDRS disease-progression + symptomatic effect | focei | own (slope, symptomatic) |
 | `Hamuro_2017_DMD_6MWT` | disease | Bilinear 6-minute-walk vs age | focei | own (both slopes) |
 
-The five bare `PK_*` templates ship with fixed effects only; the suite augments
+The three bare `PK_*` templates ship with fixed effects only; the suite augments
 each with between-subject variability (IIV) on clearance (`lcl`) and central
 volume (`lvc`) via `nlmixr2lib::addEta()`, so there is a real random-effect signal
-to estimate. `theo_1cmt` (the canonical nlmixr2 example, fit to the **real**
+to estimate. The two theophylline models (`theo_1cmt`, `theo_1cmt_des` — the
+canonical nlmixr2 example in its solved and ODE forms, both fit to the **real**
 theophylline dataset) and the two disease models already carry their own IIV and
 are used verbatim. Augmentation is applied identically in simulation, fitting, and
 baseline capture through the shared `qual_prepare_model()` helper.
@@ -69,33 +70,39 @@ model({
 
 ![theo_1cmt spaghetti plot](figures/theo_1cmt.png)
 
-### PK_1cmt — one-compartment oral
+`theo_1cmt` is the suite's primary one-compartment **anchor** (re-fit in the
+thread-invariance stage and used as the method-coverage anchor).
 
-First-order absorption from a depot into a single disposition compartment with
-linear (first-order) elimination, evaluated with the closed-form solver
-`linCmt()`. Parameters: absorption rate `ka`, clearance `CL`, central volume `V`,
-proportional residual error. Oral dosing (depot → central); observation is plasma
-concentration `Cc`.
+### theo_1cmt_des — one-compartment oral, explicit ODEs (real theophylline data)
+
+The same theophylline model and the same real `theo_sd` data as `theo_1cmt`, but
+written as explicit differential equations rather than the closed-form `linCmt()`
+solver — so the qualification exercises the ODE-solver code path on real data.
+Used verbatim ([`inst/models/theo_1cmt_des.R`](../inst/models/theo_1cmt_des.R)).
+It reaches essentially the same optimum as the solved form (OFV ≈ 116.80).
 
 ```r
 ini({
-  lka    <- 0.45          # Absorption rate (Ka)
-  lcl    <- 1             # Clearance (CL)
-  lvc    <- 3.45          # Central volume of distribution (V)
-  propSd <- c(0, 0.5)     # Proportional residual error
-  etaLcl ~ 0.1            # IIV on CL   (added by qualification)
-  etaLvc ~ 0.1            # IIV on V    (added by qualification)
+  tka <- 0.45   # log Ka
+  tcl <- 1      # log CL
+  tv  <- 3.45   # log V
+  eta.ka ~ 0.6
+  eta.cl ~ 0.3
+  eta.v  ~ 0.1
+  add.sd <- 0.7
 })
 model({
-  ka <- exp(lka)
-  cl <- exp(lcl + etaLcl)
-  vc <- exp(lvc + etaLvc)
-  Cc <- linCmt()
-  Cc ~ prop(propSd)
+  ka <- exp(tka + eta.ka)
+  cl <- exp(tcl + eta.cl)
+  v  <- exp(tv  + eta.v)
+  d/dt(depot)  <- -ka * depot
+  d/dt(center) <-  ka * depot - cl / v * center
+  cp <- center / v
+  cp ~ add(add.sd)
 })
 ```
 
-![PK_1cmt spaghetti plot](figures/PK_1cmt.png)
+The dataset is identical to `theo_1cmt` (see the spaghetti plot above).
 
 ### PK_2cmt — two-compartment oral
 
@@ -151,31 +158,6 @@ model({
 ```
 
 ![PK_3cmt spaghetti plot](figures/PK_3cmt.png)
-
-### PK_1cmt_des — one-compartment oral, explicit ODEs
-
-The same one-compartment oral structure as `PK_1cmt`, but written as explicit
-differential equations rather than `linCmt()`. This deliberately exercises the
-ODE-solver code path (as opposed to the closed-form solver) so the qualification
-covers both.
-
-```r
-ini({
-  lka    <- 0.45; lcl <- 1; lvc <- 3.45; propSd <- c(0, 0.5)
-  etaLcl ~ 0.1
-  etaLvc ~ 0.1
-})
-model({
-  ka <- exp(lka); cl <- exp(lcl + etaLcl); vc <- exp(lvc + etaLvc)
-  kel <- cl / vc
-  d/dt(depot)   <- -ka * depot
-  d/dt(central) <-  ka * depot - kel * central
-  Cc <- central / vc
-  Cc ~ prop(propSd)
-})
-```
-
-![PK_1cmt_des spaghetti plot](figures/PK_1cmt_des.png)
 
 ### PK_2cmt_no_depot — two-compartment IV, explicit ODEs
 
@@ -283,9 +265,10 @@ model({
 ## Datasets and simulation design
 
 Each model has one permanently frozen dataset under
-[`inst/extdata/`](../inst/extdata). `theo_1cmt` uses **real** data — the classic
-`nlmixr2data::theo_sd` theophylline set (12 subjects, one oral dose, samples to
-~24 h) written out verbatim. The simulated `PK_*` datasets are 32 subjects dosed
+[`inst/extdata/`](../inst/extdata). The two theophylline models (`theo_1cmt` and
+`theo_1cmt_des`) share **real** data — the classic `nlmixr2data::theo_sd`
+theophylline set (12 subjects, one oral dose, samples to ~24 h) written out
+verbatim. The simulated `PK_*` datasets are 32 subjects dosed
 across four levels (50/100/150/200 mg) with samples at 0.25–24 h; the simulated
 disease datasets are 40 subjects followed longitudinally (Lee: 0–24 months, half
 randomised to active treatment; Hamuro: seven visits over three years from a 5–10
@@ -323,14 +306,15 @@ which would make the fingerprint's convergence flag brittle across platforms;
 ### foce — first-order conditional estimation (no interaction) *(anchor)*
 
 FOCE without the random-effect/residual interaction term. A baseline is cut for
-`foce` on the `PK_1cmt` anchor to demonstrate that the qualification machinery
+`foce` on the `theo_1cmt` anchor to demonstrate that the qualification machinery
 covers more than one estimation algorithm; the method-coverage test
 (`test-qual-methods.R`) qualifies any method that has an anchor baseline.
 
 ### Full method catalogue
 
 `needs_reff = FALSE` optimizer methods fit fixed effects only and are anchored to
-`PK_1cmt_fixed` (a random-effect-free variant); all others anchor to `PK_1cmt`.
+`theo_1cmt_fixed` (a random-effect-free variant); all others anchor to
+`theo_1cmt`.
 
 | Family | Methods | Baseline status |
 |---|---|---|
