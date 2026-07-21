@@ -9,7 +9,7 @@ Description: Reproducibility qualification of an nlmixr2 installation. Re-fits a
     estimation methods, qualifies multi-threaded fitting by a thread-invariance
     check, and renders a Quarto qualification report with an overall PASS/FAIL
     verdict.
-License: file LICENSE
+License: GPL (>= 3)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Depends:
