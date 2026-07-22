@@ -306,8 +306,9 @@ seed. Spaghetti plots above use the Okabe–Ito colourblind-safe palette, colour
 `nlmixr2` exposes 26 estimation methods across six algorithm families. The full
 matrix is catalogued in [`inst/models/methods.csv`](../inst/models/methods.csv)
 and validated against the installed estimator set. This release **cuts anchor
-baselines for the two reliable conditional-estimation methods below**; the
-remaining methods are catalogued but their baselines are a tracked follow-up (see
+baselines for the two methods below** — `focei` (the primary conditional method)
+and `saem` (the oldest, most robust stochastic method); the remaining methods are
+catalogued but their baselines are a tracked follow-up (see
 [`follow-up-deferred-scope.md`](follow-up-deferred-scope.md)).
 
 ### focei — first-order conditional estimation with interaction *(primary)*
@@ -325,12 +326,20 @@ optimum but emits a tolerance-sensitive "false convergence (8)" advisory there,
 which would make the fingerprint's convergence flag brittle across platforms;
 `bobyqa` exits cleanly with convergence code 0.
 
-### foce — first-order conditional estimation (no interaction) *(anchor)*
+### saem — stochastic approximation expectation-maximisation *(anchor)*
 
-FOCE without the random-effect/residual interaction term. A baseline is cut for
-`foce` on the `theo_1cmt` anchor to demonstrate that the qualification machinery
-covers more than one estimation algorithm; the method-coverage test
-(`test-qual-methods.R`) qualifies any method that has an anchor baseline.
+The oldest and most robust nonlinear mixed-effects estimation method, and a more
+meaningful second anchor than a FOCE variant. A baseline is cut for `saem` on the
+`theo_1cmt` anchor to show the qualification machinery covers more than one
+algorithm family. Because SAEM is **stochastic**, `qual_fit_control()` pins its
+random seed (99) and iteration budget (nBurn 200, nEm 300) so the run is
+reproducible, and it is compared under the looser **stochastic tolerance**
+(`qual_tolerance(stochastic = TRUE)`). It is qualified as **informational**
+(`strict = FALSE` in `methods.csv`): a seeded re-fit on the same machine
+reproduces the baseline exactly, but seeded stochastic estimation is not
+guaranteed to reproduce across platforms, so a SAEM deviation is reported without
+failing the verdict. The method-coverage test (`test-qual-methods.R`) qualifies
+any method that has an anchor baseline.
 
 ### Full method catalogue
 
@@ -340,9 +349,9 @@ covers more than one estimation algorithm; the method-coverage test
 
 | Family | Methods | Baseline status |
 |---|---|---|
-| Linearized | `fo`, `foi`, `foce`, `focei`, `focep`, `nlme` | `focei`, `foce` cut; rest deferred |
+| Linearized | `fo`, `foi`, `foce`, `focei`, `focep`, `nlme` | `focei` cut (primary); rest deferred |
 | Integral approximation | `laplace`, `agq`, `imp`, `impmap` | deferred |
-| Stochastic EM | `saem`, `fsaem`, `qrpem` | deferred (stochastic axis) |
+| Stochastic EM | `saem`, `fsaem`, `qrpem` | `saem` cut (informational anchor); rest deferred |
 | Nonparametric | `npag`, `npb` | deferred (needs non-parametric extraction) |
 | Machine learning | `advi`, `vae` | deferred (needs ELBO/variational extraction) |
 | Optimizer (NLM family) | `nlm`, `nlminb`, `bobyqa`, `newuoa`, `uobyqa`, `n1qn1`, `lbfgsb3c`, `optim`, `nls` | deferred (fixed-effect anchor) |

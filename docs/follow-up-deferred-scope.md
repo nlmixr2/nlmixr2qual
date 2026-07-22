@@ -75,11 +75,18 @@ its registry-test assertion is unchanged). Baseline `theo_1cmt__focei.qs2` cut
 (OFV 116.80, converged, cov `r,s`); reproduces its baseline (compare pass). Added
 to `models-and-methods.md` with a spaghetti plot. R CMD check remains OK.
 
-### 0.3 Drop FOCE as the anchor method; use SAEM instead
+### 0.3 Drop FOCE as the anchor method; use SAEM instead — ✅ DONE 2026-07-22
 
-Replace `foce` in the method-coverage anchor set with **`saem`** (stochastic
-approximation EM) — the oldest and most robust NLME estimation method, and a more
-meaningful second anchor than FOCE-without-interaction.
+Implemented. `theo_1cmt__foce.qs2` removed; `theo_1cmt__saem.qs2` cut instead
+(OFV 122.01, converged, cov `linFim`). `qual_fit_control()` now returns a pinned
+`saemControl(seed = 99, nBurn = 200, nEm = 300)` for `est = "saem"`, so the
+stochastic run is reproducible (a same-machine re-fit gave a bit-identical OFV
+and passed `qual_compare` under the stochastic tolerance). `saem` is marked
+`strict = FALSE` (informational) in `methods.csv` — it is reported but does not
+gate the verdict, since seeded SAEM is not guaranteed to reproduce across
+platforms. Docs (`models-and-methods.md`) updated. Original notes kept below.
+
+
 
 - Remove the `theo_1cmt__foce.qs2` anchor baseline; cut `theo_1cmt__saem.qs2` instead.
 - **SAEM is stochastic**, so reproducibility requires a **pinned seed** (and fixed

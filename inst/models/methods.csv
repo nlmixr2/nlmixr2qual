@@ -9,7 +9,7 @@ laplace,Integral approximation,FALSE,TRUE,TRUE
 agq,Integral approximation,FALSE,TRUE,TRUE
 imp,Integral approximation,TRUE,TRUE,TRUE
 impmap,Integral approximation,TRUE,TRUE,TRUE
-saem,Stochastic EM,TRUE,TRUE,TRUE
+saem,Stochastic EM,TRUE,FALSE,TRUE
 fsaem,Stochastic EM,TRUE,TRUE,TRUE
 qrpem,Stochastic EM,TRUE,TRUE,TRUE
 npag,Nonparametric,TRUE,TRUE,TRUE
