@@ -125,28 +125,44 @@ local({
   write_frozen(ev, "Lee_2011_parkinson_sim.csv")
 })
 
-# ---- Hamuro_2017_DMD_6MWT (disease) ----------------------------------------
+# ---- Friberg_2002_paclitaxel (PKPD) ----------------------------------------
 #
-# Duchenne muscular dystrophy 6-minute-walk-test (walkDist) progression: a
-# rise-then-decline bilinear function of AGE (min of a developmental gain line
-# and a decline line). Carries its own IIV (etalslope_dev, etalslope_decl), so
-# used verbatim. Needs a time-varying AGE covariate; each child enters at a
-# baseline age (5-10 yr) and is followed over 3 years. No dosing.
+# The classic Friberg semi-mechanistic myelosuppression model: paclitaxel
+# two-compartment PK drives a proliferating-precursor -> 3-transit -> circulating
+# chain with the (circ0/circ)^gamma feedback. The endpoint is the circulating
+# white-blood-cell count (WBC), which is non-negative by construction (a
+# proportional residual on a positive prediction) -- so, unlike an additive-error
+# progression model, the simulated data cannot go negative. Carries its own IIV
+# (circ0, MTT, slope), so used verbatim. The model reads the individual
+# paclitaxel PK as covariate columns (VC_INDIV, CL_INDIV, VP_INDIV); each subject
+# gets a single IV dose (into central, CMT 1) and WBC samples around the ~day-9
+# nadir and recovery (CMT 3). Doses are deliberately moderate so suppression is
+# real but the WBC stays clear of zero (the deep-nadir regime makes the 7-ODE
+# system stiff and risks invalid values).
 local({
-  set.seed(20260717)
-  ui <- rxode2::rxode2(readModelDb("Hamuro_2017_DMD_6MWT"))
-  n <- 40
-  visits <- c(0, 0.5, 1, 1.5, 2, 2.5, 3)             # years from entry
+  set.seed(20260721)
+  ui <- rxode2::rxode2(readModelDb("Friberg_2002_paclitaxel"))
+  n <- 32
+  dose_levels <- c(8, 12, 16)                        # moderate paclitaxel doses
+  obs_h <- c(0, 72, 144, 192, 216, 264, 336, 504, 672)  # days 0,3,6,8,9,11,14,21,28
   recs <- lapply(seq_len(n), function(i) {
-    base_age <- 5 + (i %% 6)
-    data.frame(ID = i, TIME = visits, EVID = 0L, DV = NA_real_,
-               AGE = base_age + visits)
+    dose <- dose_levels[((i - 1) %% length(dose_levels)) + 1]
+    vc <- 8  * exp(rnorm(1, 0, 0.20))
+    cl <- 15 * exp(rnorm(1, 0, 0.25))
+    vp <- 200 * exp(rnorm(1, 0, 0.30))
+    rbind(
+      data.frame(ID = i, TIME = 0,     AMT = dose, EVID = 1L, CMT = 1L,
+                 DV = NA_real_, VC_INDIV = vc, CL_INDIV = cl, VP_INDIV = vp),
+      data.frame(ID = i, TIME = obs_h, AMT = 0,    EVID = 0L, CMT = 3L,
+                 DV = NA_real_, VC_INDIV = vc, CL_INDIV = cl, VP_INDIV = vp))
   })
   ev <- do.call(rbind, recs)
+  ev <- ev[order(ev$ID, ev$TIME, -ev$EVID), ]
   sol <- rxSolve(ui, ev, nSub = n)
-  ev$DV <- as.data.frame(sol)$sim
-  stopifnot(all(is.finite(ev$DV)))
-  write_frozen(ev, "Hamuro_2017_dmd_sim.csv")
+  ev$DV[ev$EVID == 0] <- as.data.frame(sol)$sim
+  ev$DV[ev$EVID == 1] <- 0
+  stopifnot(all(ev$DV[ev$EVID == 0] > 0))            # WBC must stay positive
+  write_frozen(ev, "Friberg_2002_paclitaxel_sim.csv")
 })
 
 message("done: dataset generation")

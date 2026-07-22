@@ -12,7 +12,21 @@ Three specific changes to make before the broader deferred work below. Each
 touches the frozen datasets and/or the shipped baseline, so each ends with a
 deliberate recut and a refresh of [`models-and-methods.md`](models-and-methods.md).
 
-### 0.1 Replace the Hamuro dataset design — no invalid (negative) simulated data
+### 0.1 Replace the Hamuro dataset design — no invalid (negative) simulated data — ✅ DONE 2026-07-21 (option 3: model replacement)
+
+Resolved by **option 3** — replaced `Hamuro_2017_DMD_6MWT` with
+**`Friberg_2002_paclitaxel`** (the classic semi-mechanistic myelosuppression
+model, domain PKPD). Its endpoint is a circulating WBC count with a proportional
+residual, so simulated values are non-negative by construction. Frozen dataset:
+32 subjects, single moderate paclitaxel dose (8/12/16 — kept mild so the 7-ODE
+system stays non-stiff and the WBC nadir clears zero), WBC sampled to day 28,
+individual PK as `VC/CL/VP_INDIV` covariate columns, `stopifnot(all(DV > 0))`
+guard. Baseline `Friberg_2002_paclitaxel__focei.qs2` cut (OFV 924.58, converged,
+analytic covariance). Added a PKPD domain + `test-qual-PKPD.R`; Hamuro dataset,
+baseline, figure, and sim block removed. The original options are kept below for
+the record.
+
+
 
 **Problem.** The frozen `Hamuro_2017_dmd_sim.csv` contains negative 6-minute-walk
 distances for the steepest decliners: the verbatim model uses an **additive**

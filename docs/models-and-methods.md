@@ -1,10 +1,10 @@
 # nlmixr2qual — models and estimation methods
 
 This document describes what the qualification suite currently covers: the seven
-models it re-fits (the canonical theophylline example on real data in two
-solver variants, three `nlmixr2lib` PK templates, and two disease models), the
-estimation methods it exercises, the as-fit model code, and a spaghetti plot of
-each frozen dataset.
+models it re-fits (the canonical theophylline example on real data in two solver
+variants, three `nlmixr2lib` PK templates, one disease-progression model, and the
+Friberg myelosuppression PKPD model), the estimation methods it exercises, the
+as-fit model code, and a spaghetti plot of each frozen dataset.
 
 > **Reproducibility, not correctness.** These models and datasets are a frozen
 > *regression reference*. A qualification PASS means an installation reproduces
@@ -23,16 +23,17 @@ each frozen dataset.
 | `PK_3cmt` | popPK | 3-compartment oral, solved | focei | added on CL, V |
 | `PK_2cmt_no_depot` | popPK | 2-compartment IV, explicit ODEs | focei | added on CL, V |
 | `Lee_2011_parkinson_progression` | disease | UPDRS disease-progression + symptomatic effect | focei | own (slope, symptomatic) |
-| `Hamuro_2017_DMD_6MWT` | disease | Bilinear 6-minute-walk vs age | focei | own (both slopes) |
+| `Friberg_2002_paclitaxel` | PKPD | Semi-mechanistic neutrophil myelosuppression | focei | own (baseline, MTT, slope) |
 
 The three bare `PK_*` templates ship with fixed effects only; the suite augments
 each with between-subject variability (IIV) on clearance (`lcl`) and central
 volume (`lvc`) via `nlmixr2lib::addEta()`, so there is a real random-effect signal
 to estimate. The two theophylline models (`theo_1cmt`, `theo_1cmt_des` — the
 canonical nlmixr2 example in its solved and ODE forms, both fit to the **real**
-theophylline dataset) and the two disease models already carry their own IIV and
-are used verbatim. Augmentation is applied identically in simulation, fitting, and
-baseline capture through the shared `qual_prepare_model()` helper.
+theophylline dataset), the Lee disease-progression model, and the Friberg
+myelosuppression model already carry their own IIV and are used verbatim.
+Augmentation is applied identically in simulation, fitting, and baseline capture
+through the shared `qual_prepare_model()` helper.
 
 ---
 
@@ -224,41 +225,60 @@ model({
 
 ![Lee_2011 spaghetti plot](figures/Lee_2011_parkinson.png)
 
-### Hamuro_2017_DMD_6MWT
+---
 
-A Duchenne muscular dystrophy model for the 6-minute walk test (6MWT) distance as
-a function of **age**. It is the pointwise minimum of a developmental-gain line
-(walking improves with early growth) and a disease-decline line (muscle function
-falls as the disease advances), producing a rise-then-decline trajectory. IIV is
-carried on both slopes. Used verbatim.
+## PKPD models
+
+### Friberg_2002_paclitaxel
+
+The classic Friberg semi-mechanistic model of chemotherapy-induced
+myelosuppression. Paclitaxel two-compartment PK drives a proliferating-precursor
+compartment that feeds a chain of three transit compartments into the circulating
+neutrophil pool (`circ`); the drug lowers proliferation (`edrug = 1 - slopu·Cc`)
+and a `(circ0/circ)^gamma` feedback loop drives recovery and the characteristic
+rebound overshoot. The endpoint is the circulating WBC count with a
+**proportional** residual, so simulated values are non-negative by construction —
+the reason this model was chosen to replace an earlier additive-error progression
+model whose simulated data could dip below zero. IIV is carried on the baseline
+count, mean transit time, and drug-effect slope; the model is used verbatim and
+reads the individual paclitaxel PK as covariate columns (`VC_INDIV`, `CL_INDIV`,
+`VP_INDIV`).
 
 ```r
 ini({
-  intercept     <- 270        # Developmental intercept at age 0 (m)
-  lslope_dev    <- log(19.6)  # Log developmental slope (m/year)
-  intercept2    <- 1298       # Disease-decline intercept at age 0 (m)
-  lslope_decl   <- log(84.9)  # Log disease-decline slope (m/year)
-  etalslope_dev  ~ 0.04727
-  etalslope_decl ~ 0.05153
-  addSd         <- 56.9       # Additive residual SD on 6MWT (m)
+  lcirc0 <- 1.975   # log baseline circulating count (circ0)
+  lmtt   <- 4.820   # log mean transit time (MTT)
+  lslopu <- 3.364   # log drug-effect slope
+  gamma  <- 0.239   # feedback exponent
+  propSd <- 0.286   # proportional residual error
+  etalcirc0 ~ 0.107
+  etalmtt   ~ 0.0296
+  etalslopu ~ 0.176
 })
 model({
-  slope_dev  <-  exp(lslope_dev  + etalslope_dev)
-  slope_decl <- -exp(lslope_decl + etalslope_decl)
-  walk_dev  <- intercept  + slope_dev  * AGE
-  walk_decl <- intercept2 + slope_decl * AGE
-  walkDist  <- (walk_dev <= walk_decl) * walk_dev + (walk_dev > walk_decl) * walk_decl
-  walkDist ~ add(addSd)
+  circ0 <- exp(lcirc0 + etalcirc0)
+  mtt   <- exp(lmtt + etalmtt)
+  slopu <- exp(lslopu + etalslopu)
+  q  <- 204
+  Cc <- central / VC_INDIV
+  edrug <- 1 - slopu * Cc
+  feed  <- (circ0 / circ)^gamma
+  ktr   <- 4 / mtt
+  d/dt(central)     <- -q/VC_INDIV*central - CL_INDIV/VC_INDIV*central + q/VP_INDIV*peripheral1
+  d/dt(peripheral1) <-  q/VC_INDIV*central - q/VP_INDIV*peripheral1
+  d/dt(circ)        <- ktr*precursor4 - ktr*circ
+  d/dt(precursor1)  <- ktr*precursor1*edrug*feed - ktr*precursor1
+  d/dt(precursor2)  <- ktr*precursor1 - ktr*precursor2
+  d/dt(precursor3)  <- ktr*precursor2 - ktr*precursor3
+  d/dt(precursor4)  <- ktr*precursor3 - ktr*precursor4
+  circ(0) <- circ0; precursor1(0) <- circ0; precursor2(0) <- circ0
+  precursor3(0) <- circ0; precursor4(0) <- circ0
+  WBC <- circ
+  WBC ~ prop(propSd)
 })
 ```
 
-![Hamuro_2017 spaghetti plot](figures/Hamuro_2017_dmd.png)
-
-> The steepest decliners in the plot dip below zero. That is a property of the
-> **frozen simulated reference** — the additive residual error is unbounded and
-> the decline arm is steep at older ages — not a physiological claim. It does not
-> affect the reproducibility qualification, which only compares a re-fit of this
-> exact dataset against the baseline cut from it.
+![Friberg_2002 spaghetti plot](figures/Friberg_2002_paclitaxel.png)
 
 ---
 
@@ -269,13 +289,15 @@ Each model has one permanently frozen dataset under
 `theo_1cmt_des`) share **real** data — the classic `nlmixr2data::theo_sd`
 theophylline set (12 subjects, one oral dose, samples to ~24 h) written out
 verbatim. The simulated `PK_*` datasets are 32 subjects dosed
-across four levels (50/100/150/200 mg) with samples at 0.25–24 h; the simulated
-disease datasets are 40 subjects followed longitudinally (Lee: 0–24 months, half
-randomised to active treatment; Hamuro: seven visits over three years from a 5–10
-year baseline age). The simulated sets were generated once, single-threaded, from
-the same augmented model used for fitting, at a fixed seed. Spaghetti plots above
-use the Okabe–Ito colourblind-safe palette, colouring `PK_*` profiles by dose and
-the Lee profiles by treatment arm.
+across four levels (50/100/150/200 mg) with samples at 0.25–24 h. `Lee` is 40
+subjects over 0–24 months, half randomised to active treatment. `Friberg` is 32
+subjects given a single moderate paclitaxel dose with WBC sampled around the
+~day-9 nadir and recovery to day 28; each subject carries individual paclitaxel
+PK (`VC/CL/VP_INDIV`) as covariate columns, and a `stopifnot(all(DV > 0))` guard
+enforces that the frozen WBC values stay positive. The simulated sets were
+generated once, single-threaded, from the same model used for fitting, at a fixed
+seed. Spaghetti plots above use the Okabe–Ito colourblind-safe palette, colouring
+`PK_*` and `Friberg` profiles by dose and the Lee profiles by treatment arm.
 
 ---
 
