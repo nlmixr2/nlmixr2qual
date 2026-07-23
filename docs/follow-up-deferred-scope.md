@@ -123,6 +123,38 @@ following `nlmixr2lib` models were evaluated but deferred; all resolve via
 each needs a bespoke simulation design (verified to fit before its dataset is
 frozen).
 
+### Archetype-coverage attempt (2026-07-23) — abandoned; core kept
+
+An attempt to add one model per archetype (TMDD, M3/BQL, indirect-effect,
+ordered/non-ordered categorical, TTE, Alzheimer/Parkinson) was **stopped** — the
+literature models proved too hard/slow to simulate-and-fit reproducibly under the
+`focei`-strict policy. Findings (so the dead-ends aren't re-walked):
+
+- **`nimotuzumab`** (QSS-TMDD, real `nimoData`, TMDD archetype) — **dropped**:
+  impractically slow under **both** FOCEI (covariance-sensitivity step ran for
+  hours) and SAEM. TMDD ODE models are too expensive to re-fit on every
+  qualification run.
+- **`Conrado_2014_alzheimer`** (Alzheimer, beta regression) — **infeasible**:
+  `ADAS_NORM ~ dbeta(...)` breaks FOCEI (`terminate called without an active
+  exception` C++ crash) and SAEM refuses it (`needs to be a (transformably)
+  normal model`). The beta likelihood is incompatible with both engines.
+- **`Holford_1992_tacrine`** (Alzheimer fallback, prop residual) — FOCEI
+  `Could not fit data`: 7 etas from a single ADAS-Cog endpoint are unidentifiable
+  without a treatment/washout crossover design (my constant-`TRT_PHASE` sim did
+  not identify the phase dynamics). Would need a phase-crossover simulation.
+- **General lesson:** `focei`-strict fundamentally suits continuous/normal-residual
+  models. Non-normal likelihoods (beta, ordinal/categorical, TTE hazard) and
+  many-state ODE models (TMDD) are either FOCEI-incompatible or impractically
+  slow. Any future archetype work should (a) restrict to normal-residual models,
+  or (b) allow per-model best-method + `strict = FALSE` (informational), and
+  (c) time-box each fit — a model that a qualification run must re-fit should fit
+  in seconds/low-minutes, not hours.
+
+Not attempted before the stop: `Lestini_2015_tgfbinhibitor` (indirect PKPD,
+normal residuals — the most likely to have worked under FOCEI), `Beal_2001_iv1cmt_bql`
+(M3/BQL), `Henin_2009_capecitabine` + `Yoshida_2024_fazpilodemab` (ordered
+categorical), `Bjornsson_2011_naproxcinod` (joint TTE).
+
 ## 2. Full 26-method coverage matrix
 
 `inst/models/methods.csv` catalogues all 26 estimators across 6 categories, but
