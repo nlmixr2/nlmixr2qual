@@ -158,28 +158,42 @@ categorical), `Bjornsson_2011_naproxcinod` (joint TTE).
 ## 2. Full 26-method coverage matrix
 
 `inst/models/methods.csv` catalogues all 26 estimators across 6 categories.
-Shipped anchor baselines now cover **eight** methods: `focei` (strict) and `saem`
-(informational), plus — added **2026-07-24** — the integral approximations
-`laplace`/`agq` (strict) and `imp`/`impmap` (informational), and the
-stochastic-EM `fsaem`/`qrpem` (informational), each cut on **both** `theo_1cmt`
-and `theo_1cmt_des`. All 12 new (model, method) pairs reproduce their baseline
-exactly on a same-machine re-fit (reldiff 0); the stochastic four are seed-pinned
-in `qual_fit_control()` — SAEM family via `saemControl(seed = 99)`, the
-importance-sampling family (imp/impmap/qrpem) via `impmapControl(impSeed = 99)`.
-Remaining to complete the matrix — cut `<anchor>__<method>.qs2` baselines and
-confirm each fits cleanly:
+Shipped anchor baselines now cover **19** methods. Baselines are (re)cut by
+`data-raw/cut-method-baselines.R`, which fills only genuine gaps (never clobbers a
+frozen baseline) and skips any method that errors in this environment, so it is
+safe to re-run as the matrix grows.
 
-- **Linearized**: `fo`, `foi` (first-order — note they reject
-  `foceiControl(outerOpt=)`, so `qual_fit_control()` leaves them on their default
-  control), `focep`, `nlme`.
-- **Nonparametric** (`npag`, `npb`) and **Machine learning** (`advi`, `vae`):
-  their fit objects do **not** expose the standard parametric accessors
-  (`parFixedDf`/`omega`/`sigma`). `qual_extract_fit()` needs category-specific
-  extraction (distribution summaries / ELBO) before these can be fingerprinted —
-  flagged in the original plan's self-review as an unexercised extension point.
-- **Optimizer (NLM family)**: `nlm`, `nlminb`, `bobyqa`, `newuoa`, `uobyqa`,
-  `n1qn1`, `lbfgsb3c`, `optim`, `nls` — fit the fixed-effect-only anchor
-  `theo_1cmt_fixed` (`needs_reff = FALSE`).
+- **Linearized**: `focei` (strict, anchor), `foce`/`focep` (strict) — all three
+  conditional methods pinned to `outerOpt = "bobyqa"` for a clean convergence
+  code. Cut on **both** `theo_1cmt` and `theo_1cmt_des`.
+- **Integral approximation**: `laplace`/`agq` (strict, deterministic, same bobyqa
+  pin) and `imp`/`impmap` (informational, seed-pinned via
+  `impmapControl(impSeed = 99)`). Both anchors.
+- **Stochastic EM**: `saem`/`fsaem` (informational, seed-pinned via
+  `saemControl(seed = 99)`) and `qrpem` (informational, `impmapControl(impSeed =
+  99)`). Both anchors — `saem` was extended to `theo_1cmt_des` in this pass.
+- **Optimizer (NLM family)** on the fixed-effect-only anchor `theo_1cmt_fixed`
+  (`needs_reff = FALSE`): all nine reproduce exactly same-machine. The four that
+  reach a clean convergence code — `bobyqa`/`newuoa`/`uobyqa`/`n1qn1` — are
+  **strict**; the five that report `converged = FALSE` at the identical optimum
+  (`nlm`/`nlminb`/`lbfgsb3c`/`optim`, and `nls` which minimises a different
+  objective) are **informational**, since the convergence flag is the quantity
+  most likely to flip cross-platform.
+
+Every (model, method) pair above reproduces its baseline exactly on a same-machine
+re-fit (reldiff 0).
+
+**Still deferred** (left un-baselined → the coverage test skips them):
+
+- **Linearized**: `fo`, `foi` (reject the FOCEi control object even when none is
+  passed — "cannot find fo related control object"); `nlme` (missing
+  `.nlmixrNlmeFun` — needs engine wiring not present in this environment).
+- **Nonparametric** (`npag`, `npb`): `npag` was observed to fit **and** extract via
+  the standard parametric accessors in this environment (a strong future
+  candidate), but both are deferred pending a deliberate `qual_extract_fit()`
+  extraction audit (distribution summaries).
+- **Machine learning** (`advi`, `vae`): slow/uncertain backend, not yet vetted;
+  likely need ELBO-based extraction.
 
 ## 3. Environment robustness
 

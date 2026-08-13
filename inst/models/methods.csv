@@ -16,12 +16,12 @@ npag,Nonparametric,TRUE,TRUE,TRUE
 npb,Nonparametric,TRUE,TRUE,TRUE
 advi,Machine learning,TRUE,TRUE,TRUE
 vae,Machine learning,TRUE,TRUE,TRUE
-nlm,Optimizer (NLM family),FALSE,TRUE,FALSE
-nlminb,Optimizer (NLM family),FALSE,TRUE,FALSE
+nlm,Optimizer (NLM family),FALSE,FALSE,FALSE
+nlminb,Optimizer (NLM family),FALSE,FALSE,FALSE
 bobyqa,Optimizer (NLM family),FALSE,TRUE,FALSE
 newuoa,Optimizer (NLM family),FALSE,TRUE,FALSE
 uobyqa,Optimizer (NLM family),FALSE,TRUE,FALSE
 n1qn1,Optimizer (NLM family),FALSE,TRUE,FALSE
-lbfgsb3c,Optimizer (NLM family),FALSE,TRUE,FALSE
-optim,Optimizer (NLM family),FALSE,TRUE,FALSE
-nls,Optimizer (NLM family),FALSE,TRUE,FALSE
+lbfgsb3c,Optimizer (NLM family),FALSE,FALSE,FALSE
+optim,Optimizer (NLM family),FALSE,FALSE,FALSE
+nls,Optimizer (NLM family),FALSE,FALSE,FALSE

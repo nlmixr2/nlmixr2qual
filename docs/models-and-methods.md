@@ -306,15 +306,19 @@ seed. Spaghetti plots above use the Okabe–Ito colourblind-safe palette, colour
 `nlmixr2` exposes 26 estimation methods across six algorithm families. The full
 matrix is catalogued in [`inst/models/methods.csv`](../inst/models/methods.csv)
 and validated against the installed estimator set. This release cuts anchor
-baselines for **eight** methods on the theophylline anchors: the deterministic
-`focei` (primary), `laplace`, and `agq` are **strict**; the stochastic `saem`,
-`imp`, `impmap`, `fsaem`, and `qrpem` are **informational** (seed-pinned,
-compared under the looser stochastic tolerance, and never gating the verdict).
-The
-integral-approximation and stochastic families are exercised on **both**
-theophylline anchors — `theo_1cmt` (solved) and `theo_1cmt_des` (ODE) — so each
-method is qualified on both solver paths. The remaining families (nonparametric,
-machine learning, and the optimizer family) are a tracked follow-up (see
+baselines for **19** methods. The deterministic conditional methods `focei`
+(primary), `foce`, and `focep`, plus the integral approximations `laplace` and
+`agq`, are **strict**; the stochastic estimators `saem`, `fsaem`, `imp`,
+`impmap`, and `qrpem` are **informational** (seed-pinned, compared under the
+looser stochastic tolerance, and never gating the verdict). All of these are
+exercised on **both** theophylline anchors — `theo_1cmt` (solved) and
+`theo_1cmt_des` (ODE) — so each method is qualified on both solver paths. The
+nine-strong **optimizer (NLM) family** is qualified on the fixed-effect-only
+anchor `theo_1cmt_fixed`: `bobyqa`/`newuoa`/`uobyqa`/`n1qn1` are **strict**, the
+other five **informational**. Baselines are (re)cut by
+[`data-raw/cut-method-baselines.R`](../data-raw/cut-method-baselines.R). The
+remaining families (nonparametric, machine learning) and the first-order/`nlme`
+linearized methods are a tracked follow-up (see
 [`follow-up-deferred-scope.md`](follow-up-deferred-scope.md)).
 
 ### focei — first-order conditional estimation with interaction *(primary)*
@@ -335,9 +339,9 @@ which would make the fingerprint's convergence flag brittle across platforms;
 ### saem — stochastic approximation expectation-maximisation *(anchor)*
 
 The oldest and most robust nonlinear mixed-effects estimation method, and a more
-meaningful second anchor than a FOCE variant. A baseline is cut for `saem` on the
-`theo_1cmt` anchor to show the qualification machinery covers more than one
-algorithm family. Because SAEM is **stochastic**, `qual_fit_control()` pins its
+meaningful second anchor than a FOCE variant. Baselines are cut for `saem` on
+**both** theophylline anchors (`theo_1cmt` and `theo_1cmt_des`) to show the
+qualification machinery covers more than one algorithm family. Because SAEM is **stochastic**, `qual_fit_control()` pins its
 random seed (99) and iteration budget (nBurn 200, nEm 300) so the run is
 reproducible, and it is compared under the looser **stochastic tolerance**
 (`qual_tolerance(stochastic = TRUE)`). It is qualified as **informational**
@@ -370,14 +374,17 @@ cross-platform reason as `saem`.
 
 | Family | Methods | Baseline status |
 |---|---|---|
-| Linearized | `fo`, `foi`, `foce`, `focei`, `focep`, `nlme` | `focei` cut (primary, strict); rest deferred |
+| Linearized | `fo`, `foi`, `foce`, `focei`, `focep`, `nlme` | `focei` (primary), `foce`, `focep` cut (strict, both anchors); `fo`/`foi`/`nlme` deferred (error in this env) |
 | Integral approximation | `laplace`, `agq`, `imp`, `impmap` | `laplace`/`agq` cut (strict); `imp`/`impmap` cut (informational) — both anchors |
-| Stochastic EM | `saem`, `fsaem`, `qrpem` | `saem` cut (informational anchor); `fsaem`/`qrpem` cut (informational, both anchors) |
-| Nonparametric | `npag`, `npb` | deferred (needs non-parametric extraction) |
+| Stochastic EM | `saem`, `fsaem`, `qrpem` | all cut (informational, both anchors) |
+| Nonparametric | `npag`, `npb` | deferred (extraction audit — `npag` observed to fit + extract) |
 | Machine learning | `advi`, `vae` | deferred (needs ELBO/variational extraction) |
-| Optimizer (NLM family) | `nlm`, `nlminb`, `bobyqa`, `newuoa`, `uobyqa`, `n1qn1`, `lbfgsb3c`, `optim`, `nls` | deferred (fixed-effect anchor) |
+| Optimizer (NLM family) | `nlm`, `nlminb`, `bobyqa`, `newuoa`, `uobyqa`, `n1qn1`, `lbfgsb3c`, `optim`, `nls` | all cut on `theo_1cmt_fixed`; `bobyqa`/`newuoa`/`uobyqa`/`n1qn1` strict, rest informational |
 
-The nonparametric and machine-learning families do not expose the standard
-parametric accessors (`parFixedDf`/`omega`/`sigma`), so `qual_extract_fit()` needs
-category-specific extraction before they can be fingerprinted — this is the main
-piece of work behind completing the matrix.
+The nonparametric and machine-learning families are assumed to need
+category-specific extraction beyond the standard parametric accessors
+(`parFixedDf`/`omega`/`sigma`) — though `npag` was observed in this environment to
+populate them, so it is a strong candidate to promote after a deliberate
+`qual_extract_fit()` audit. The first-order `fo`/`foi` and `nlme` methods error in
+this environment (control-object rejection / missing `.nlmixrNlmeFun`) and remain
+deferred pending engine changes.
