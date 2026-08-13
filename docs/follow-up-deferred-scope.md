@@ -157,17 +157,21 @@ categorical), `Bjornsson_2011_naproxcinod` (joint TTE).
 
 ## 2. Full 26-method coverage matrix
 
-`inst/models/methods.csv` catalogues all 26 estimators across 6 categories, but
-the shipped anchor baselines cover only the reliable conditional-estimation
-methods (`focei`, `foce`). To complete the matrix, cut `<anchor>__<method>.qs2`
-baselines for the remaining methods and confirm each fits the anchor cleanly:
+`inst/models/methods.csv` catalogues all 26 estimators across 6 categories.
+Shipped anchor baselines now cover **eight** methods: `focei` (strict) and `saem`
+(informational), plus — added **2026-07-24** — the integral approximations
+`laplace`/`agq` (strict) and `imp`/`impmap` (informational), and the
+stochastic-EM `fsaem`/`qrpem` (informational), each cut on **both** `theo_1cmt`
+and `theo_1cmt_des`. All 12 new (model, method) pairs reproduce their baseline
+exactly on a same-machine re-fit (reldiff 0); the stochastic four are seed-pinned
+in `qual_fit_control()` — SAEM family via `saemControl(seed = 99)`, the
+importance-sampling family (imp/impmap/qrpem) via `impmapControl(impSeed = 99)`.
+Remaining to complete the matrix — cut `<anchor>__<method>.qs2` baselines and
+confirm each fits cleanly:
 
 - **Linearized**: `fo`, `foi` (first-order — note they reject
   `foceiControl(outerOpt=)`, so `qual_fit_control()` leaves them on their default
   control), `focep`, `nlme`.
-- **Integral approximation**: `laplace`, `agq`, `imp`, `impmap`.
-- **Stochastic EM**: `saem`, `fsaem`, `qrpem` (stochastic — seed control needed;
-  qualify under the looser stochastic tolerance, likely informational).
 - **Nonparametric** (`npag`, `npb`) and **Machine learning** (`advi`, `vae`):
   their fit objects do **not** expose the standard parametric accessors
   (`parFixedDf`/`omega`/`sigma`). `qual_extract_fit()` needs category-specific

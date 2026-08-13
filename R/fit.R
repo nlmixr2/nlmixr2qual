@@ -22,31 +22,37 @@ qual_prepare_model <- function(entry) {
   rxode2::rxode2(model)
 }
 
-# Conditional-estimation methods driven by the FOCEi engine that accept
-# foceiControl(outerOpt=). First-order fo/foi are handled by the same engine but
-# reject the outerOpt control ("cannot find fo related control object"), so they
-# are deliberately excluded here and use their default control.
-.qual_focei_control_family <- c("foce", "focei", "focep")
+# Conditional / integral-approximation methods driven by the FOCEi engine that
+# accept foceiControl(outerOpt=). First-order fo/foi are handled by the same
+# engine but reject the outerOpt control ("cannot find fo related control
+# object"), so they are deliberately excluded here and use their default control.
+# laplace and agq are deterministic integral approximations that also take the
+# foceiControl outer optimizer and benefit from the same stable-convergence pin.
+.qual_focei_control_family <- c("foce", "focei", "focep", "laplace", "agq")
 
-# SAEM is a STOCHASTIC estimator, so reproducibility requires pinning its random
-# seed and iteration counts. These are fixed here (and identical for the baseline
-# cut and every re-fit) so the same machine reproduces the run exactly; the
-# looser stochastic tolerance (qual_tolerance(stochastic = TRUE)) absorbs the
-# residual cross-platform variability.
-.qual_saem_seed <- 99L
+# STOCHASTIC estimators need their random seed (and iteration budget, for the EM
+# methods) pinned so a baseline cut and every re-fit reproduce exactly on the
+# same machine; the looser stochastic tolerance (qual_tolerance(stochastic =
+# TRUE)) absorbs residual cross-platform variability. The SAEM family
+# (saem/fsaem) is seeded through saemControl(seed=); the importance-sampling
+# family (imp/impmap/qrpem) through impmapControl(impSeed=).
+.qual_saem_family   <- c("saem", "fsaem")
+.qual_impmap_family <- c("imp", "impmap", "qrpem")
+.qual_saem_seed  <- 99L
 .qual_saem_nburn <- 200L
-.qual_saem_nem <- 300L
+.qual_saem_nem   <- 300L
+.qual_imp_seed   <- 99L
 
 #' Stable estimation control for a method (or NULL for the method default)
 #'
-#' The conditional FOCE(i) methods' default outer optimizer (nlminb) reports a
-#' tolerance-sensitive "false convergence (8)" advisory at the optimum, which
-#' the fingerprint would record as `converged = FALSE` for every model and makes
-#' the convergence check meaningless (and brittle across platforms). bobyqa
-#' reaches the identical optimum with a clean exit (convergence code 0), so it is
-#' pinned as the outer optimizer for that family. SAEM is pinned to a fixed seed
-#' and iteration budget so its stochastic estimation is reproducible. Other
-#' methods use their default control (NULL).
+#' The conditional FOCE(i) / integral-approximation methods' default outer
+#' optimizer (nlminb) reports a tolerance-sensitive "false convergence (8)"
+#' advisory at the optimum, which the fingerprint would record as
+#' `converged = FALSE` and makes the convergence check meaningless (and brittle
+#' across platforms). bobyqa reaches the identical optimum with a clean exit
+#' (convergence code 0), so it is pinned for that family. Stochastic estimators
+#' are pinned to a fixed seed (and iteration budget for the EM methods) so their
+#' estimation is reproducible. Other methods use their default control (NULL).
 #' @param method The est= method string.
 #' @return A control object accepted by [nlmixr2est::nlmixr2()], or NULL.
 #' @keywords internal
@@ -54,10 +60,13 @@ qual_fit_control <- function(method) {
   if (method %in% .qual_focei_control_family) {
     return(nlmixr2est::foceiControl(outerOpt = "bobyqa"))
   }
-  if (identical(method, "saem")) {
+  if (method %in% .qual_saem_family) {
     return(nlmixr2est::saemControl(seed = .qual_saem_seed,
                                    nBurn = .qual_saem_nburn,
                                    nEm = .qual_saem_nem))
+  }
+  if (method %in% .qual_impmap_family) {
+    return(nlmixr2est::impmapControl(impSeed = .qual_imp_seed))
   }
   NULL
 }

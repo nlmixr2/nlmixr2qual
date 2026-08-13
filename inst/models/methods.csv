@@ -7,11 +7,11 @@ focep,Linearized,FALSE,TRUE,TRUE
 nlme,Linearized,FALSE,TRUE,TRUE
 laplace,Integral approximation,FALSE,TRUE,TRUE
 agq,Integral approximation,FALSE,TRUE,TRUE
-imp,Integral approximation,TRUE,TRUE,TRUE
-impmap,Integral approximation,TRUE,TRUE,TRUE
+imp,Integral approximation,TRUE,FALSE,TRUE
+impmap,Integral approximation,TRUE,FALSE,TRUE
 saem,Stochastic EM,TRUE,FALSE,TRUE
-fsaem,Stochastic EM,TRUE,TRUE,TRUE
-qrpem,Stochastic EM,TRUE,TRUE,TRUE
+fsaem,Stochastic EM,TRUE,FALSE,TRUE
+qrpem,Stochastic EM,TRUE,FALSE,TRUE
 npag,Nonparametric,TRUE,TRUE,TRUE
 npb,Nonparametric,TRUE,TRUE,TRUE
 advi,Machine learning,TRUE,TRUE,TRUE

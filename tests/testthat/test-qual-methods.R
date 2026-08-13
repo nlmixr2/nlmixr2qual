@@ -1,12 +1,13 @@
 # Anchor method-coverage matrix: each estimation method is qualified against a
-# shipped baseline for the anchor model it fits. Methods that need random
-# effects use theo_1cmt (the real-data theophylline anchor); needs_reff = FALSE
-# optimizers use the fixed-effect-only theo_1cmt_fixed. A method is exercised
-# only when its anchor baseline has been cut; the milestone ships baselines for
-# the reliable conditional-estimation methods, with the remaining methods
-# (integral approximation, stochastic EM, nonparametric, ML, and the optimizer
-# family) tracked as a follow-up. Missing baselines skip, so this file always
-# passes what it can and never fails on an un-baselined method.
+# shipped baseline for the anchor model(s) it fits. Methods that need random
+# effects are anchored to BOTH theophylline anchors -- theo_1cmt (solved linCmt)
+# and theo_1cmt_des (the ODE form) -- so a method is exercised on both solver
+# paths; needs_reff = FALSE optimizers use the fixed-effect-only theo_1cmt_fixed.
+# A (model, method) pair is exercised only when its baseline has been cut; the
+# release ships focei + saem on the anchors plus laplace/agq/imp/impmap/fsaem/
+# qrpem on theo_1cmt and theo_1cmt_des, with the remaining methods (nonparametric,
+# ML, optimizer family) tracked as a follow-up. Missing baselines skip, so this
+# file always passes what it can and never fails on an un-baselined pair.
 test_that("catalogued methods reproduce the anchor baseline where available", {
   skip_if_not_installed("nlmixr2")
   skip_if(!nzchar(Sys.getenv("NLMIXR2QUAL_RUN_LIVE")),
@@ -20,26 +21,32 @@ test_that("catalogued methods reproduce the anchor baseline where available", {
 
   for (i in seq_len(nrow(m))) {
     meth <- as.list(m[i, ])
-    anchor <- if (isTRUE(meth$needs_reff)) "theo_1cmt" else "theo_1cmt_fixed"
-    base_file <- file.path(baseline_dir,
-                           paste0(anchor, "__", meth$method, ".qs2"))
-    if (!file.exists(base_file)) next   # not yet baselined -> follow-up
-
-    entry <- list(
-      name = anchor, source = "file",
-      dataset = "theo_sd.csv", method = meth$method,
-      stochastic = meth$stochastic, eta = "")
-    fp <- qual_fit_entry(entry, category = meth$category,
-                         threads = qual_inner_threads())
-    cmp <- qual_compare(fp, qs2::qs_read(base_file))
-    n_exercised <- n_exercised + 1L
-    if (isTRUE(meth$strict)) {
-      expect_true(cmp$pass, info = paste(meth$method, "-",
-        paste(cmp$detail$quantity[!cmp$detail$pass], collapse = ", ")))
+    anchors <- if (isTRUE(meth$needs_reff)) {
+      c("theo_1cmt", "theo_1cmt_des")
+    } else {
+      "theo_1cmt_fixed"
     }
-    # non-strict methods are recorded but never fail the verdict
+    for (anchor in anchors) {
+      base_file <- file.path(baseline_dir,
+                             paste0(anchor, "__", meth$method, ".qs2"))
+      if (!file.exists(base_file)) next   # (model, method) not baselined -> follow-up
+
+      entry <- list(
+        name = anchor, source = "file",
+        dataset = "theo_sd.csv", method = meth$method,
+        stochastic = meth$stochastic, eta = "")
+      fp <- qual_fit_entry(entry, category = meth$category,
+                           threads = qual_inner_threads())
+      cmp <- qual_compare(fp, qs2::qs_read(base_file))
+      n_exercised <- n_exercised + 1L
+      if (isTRUE(meth$strict)) {
+        expect_true(cmp$pass, info = paste(anchor, meth$method, "-",
+          paste(cmp$detail$quantity[!cmp$detail$pass], collapse = ", ")))
+      }
+      # non-strict methods are recorded but never fail the verdict
+    }
   }
 
-  # at least the shipped conditional-estimation baselines must be exercised
+  # at least the shipped baselines must be exercised
   expect_gte(n_exercised, 1L)
 })

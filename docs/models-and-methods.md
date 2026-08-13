@@ -305,10 +305,16 @@ seed. Spaghetti plots above use the Okabe–Ito colourblind-safe palette, colour
 
 `nlmixr2` exposes 26 estimation methods across six algorithm families. The full
 matrix is catalogued in [`inst/models/methods.csv`](../inst/models/methods.csv)
-and validated against the installed estimator set. This release **cuts anchor
-baselines for the two methods below** — `focei` (the primary conditional method)
-and `saem` (the oldest, most robust stochastic method); the remaining methods are
-catalogued but their baselines are a tracked follow-up (see
+and validated against the installed estimator set. This release cuts anchor
+baselines for **eight** methods on the theophylline anchors: the deterministic
+`focei` (primary), `laplace`, and `agq` are **strict**; the stochastic `saem`,
+`imp`, `impmap`, `fsaem`, and `qrpem` are **informational** (seed-pinned,
+compared under the looser stochastic tolerance, and never gating the verdict).
+The
+integral-approximation and stochastic families are exercised on **both**
+theophylline anchors — `theo_1cmt` (solved) and `theo_1cmt_des` (ODE) — so each
+method is qualified on both solver paths. The remaining families (nonparametric,
+machine learning, and the optimizer family) are a tracked follow-up (see
 [`follow-up-deferred-scope.md`](follow-up-deferred-scope.md)).
 
 ### focei — first-order conditional estimation with interaction *(primary)*
@@ -341,17 +347,32 @@ guaranteed to reproduce across platforms, so a SAEM deviation is reported withou
 failing the verdict. The method-coverage test (`test-qual-methods.R`) qualifies
 any method that has an anchor baseline.
 
+### Integral approximation and stochastic EM families
+
+Beyond the two anchor methods, this release qualifies the integral-approximation
+methods `laplace` and `agq` and the stochastic estimators `imp`, `impmap`,
+`fsaem`, and `qrpem`, each on **both** theophylline anchors (`theo_1cmt` and
+`theo_1cmt_des`). `laplace` and `agq` are deterministic and reach the same optimum
+as `focei` (OFV ≈ 116.80) with a clean covariance step; they use the same
+`bobyqa` outer optimizer and are **strict**. The four stochastic methods are
+seed-pinned in `qual_fit_control()` — the SAEM family (`saem`, `fsaem`) through
+`saemControl(seed = 99, …)` and the importance-sampling family (`imp`, `impmap`,
+`qrpem`) through `impmapControl(impSeed = 99)` — so a same-machine re-fit
+reproduces the baseline; they are **informational** for the same
+cross-platform reason as `saem`.
+
 ### Full method catalogue
 
 `needs_reff = FALSE` optimizer methods fit fixed effects only and are anchored to
 `theo_1cmt_fixed` (a random-effect-free variant); all others anchor to
-`theo_1cmt`.
+`theo_1cmt` (and, for the integral-approximation and stochastic families,
+`theo_1cmt_des` as well).
 
 | Family | Methods | Baseline status |
 |---|---|---|
-| Linearized | `fo`, `foi`, `foce`, `focei`, `focep`, `nlme` | `focei` cut (primary); rest deferred |
-| Integral approximation | `laplace`, `agq`, `imp`, `impmap` | deferred |
-| Stochastic EM | `saem`, `fsaem`, `qrpem` | `saem` cut (informational anchor); rest deferred |
+| Linearized | `fo`, `foi`, `foce`, `focei`, `focep`, `nlme` | `focei` cut (primary, strict); rest deferred |
+| Integral approximation | `laplace`, `agq`, `imp`, `impmap` | `laplace`/`agq` cut (strict); `imp`/`impmap` cut (informational) — both anchors |
+| Stochastic EM | `saem`, `fsaem`, `qrpem` | `saem` cut (informational anchor); `fsaem`/`qrpem` cut (informational, both anchors) |
 | Nonparametric | `npag`, `npb` | deferred (needs non-parametric extraction) |
 | Machine learning | `advi`, `vae` | deferred (needs ELBO/variational extraction) |
 | Optimizer (NLM family) | `nlm`, `nlminb`, `bobyqa`, `newuoa`, `uobyqa`, `n1qn1`, `lbfgsb3c`, `optim`, `nls` | deferred (fixed-effect anchor) |
