@@ -2,6 +2,7 @@
 
 export(qual_compare)
 export(qual_extract_fit)
+export(qual_import_bundle)
 export(qual_inner_threads)
 export(qual_invariance_threads)
 export(qual_provenance)
