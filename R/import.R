@@ -34,11 +34,21 @@
 #' @param description Optional model description string.
 #' @param stochastic Optional logical; default inferred from the method.
 #' @param category Optional method-family label for tolerance reporting.
+#' @param initial_estimates Starting values for re-fitting this reference.
+#'   `NULL` (default) uses the bundle's own pre-fit priors (`fit$iniDf0`,
+#'   preserved by `nlmixr2save::saveFit()`) -- NOT the fitted/post-fit values
+#'   baked into the reconstructed model source, so a local re-fit reproduces
+#'   the original cold-start optimizer trajectory instead of warm-starting
+#'   from the answer. Otherwise a named numeric vector/list overriding
+#'   specific parameter names (unnamed ones keep the bundle's iniDf0 value),
+#'   or a compiled rxode2/nlmixr2 model object (or an unevaluated model
+#'   function) whose own `$iniDf` starting values are used instead.
 #' @return A reference list (see [qual_reference_write()]).
 #' @export
 qual_import_bundle <- function(zip, model_name, threads, method = NULL,
                                control = NULL, description = "",
-                               stochastic = NULL, category = "") {
+                               stochastic = NULL, category = "",
+                               initial_estimates = NULL) {
   if (missing(threads) || is.null(threads) || is.na(threads))
     stop("qual_import_bundle(): `threads` (fit thread count) is required")
   threads <- as.integer(threads)
@@ -77,6 +87,7 @@ qual_import_bundle <- function(zip, model_name, threads, method = NULL,
   fp <- qual_extract_fit(fit, model = model_name, method = method,
                          category = category, stochastic = stochastic,
                          threads = threads)
+  ie <- .qual_resolve_initial_estimates(initial_estimates, fit)
   setwd(old)
 
   ref <- list(
@@ -87,6 +98,7 @@ qual_import_bundle <- function(zip, model_name, threads, method = NULL,
                 records = records),
     method = list(est = method, control = control),
     reference = list(threads = threads, ofv = fp$ofv, params = fp$params,
+                     initial_estimates = ie,
                      shrink = fp$shrink, converged = fp$converged,
                      covMethod = fp$covMethod, stochastic = fp$stochastic,
                      category = fp$category),
@@ -113,6 +125,43 @@ qual_import_bundle <- function(zip, model_name, threads, method = NULL,
   if (!exists("nlme", envir = fit$env, inherits = FALSE))
     assign("nlme", NULL, envir = fit$env)
   invisible(fit)
+}
+
+# A pre-fit iniDf (fit$iniDf0, or a model's own $iniDf) -> name/ptype/value.
+# iniDf rows are theta (ntheta set) or eta/omega (neta1/neta2 set); there is
+# no separate pre-fit "sigma" category -- residual-error thetas (e.g. add.sd)
+# only become "sigma"-classed post-fit, matching qual_extract_fit()'s params.
+.qual_iniDf_to_estimates <- function(iniDf) {
+  ptype <- ifelse(!is.na(iniDf$ntheta), "theta", "omega")
+  data.frame(name = as.character(iniDf$name), ptype = ptype,
+             value = as.numeric(iniDf$est), stringsAsFactors = FALSE)
+}
+
+# Resolve the `initial_estimates` argument into a name/ptype/value data frame.
+# Default source is the bundle's own pre-fit priors (fit$iniDf0); a named
+# list/vector overrides individual entries on top of that baseline, and a
+# compiled (or unevaluated) model object supplies its own $iniDf instead.
+.qual_resolve_initial_estimates <- function(initial_estimates, fit) {
+  base <- .qual_iniDf_to_estimates(fit$iniDf0)
+  if (is.null(initial_estimates)) return(base)
+
+  if (is.function(initial_estimates) || inherits(initial_estimates, "rxUi")) {
+    model <- if (is.function(initial_estimates)) rxode2::rxode2(initial_estimates)
+             else initial_estimates
+    return(.qual_iniDf_to_estimates(model$iniDf))
+  }
+
+  ov <- initial_estimates
+  nm <- names(ov)
+  if (is.null(nm) || any(!nzchar(nm)))
+    stop("qual_import_bundle(): initial_estimates must be a named list/vector, ",
+        "a compiled model object, or NULL")
+  unknown <- setdiff(nm, base$name)
+  if (length(unknown))
+    stop("qual_import_bundle(): initial_estimates has unknown parameter name(s): ",
+        paste(unknown, collapse = ", "))
+  base$value[match(nm, base$name)] <- as.numeric(unlist(ov))
+  base
 }
 
 .qual_pkg_ver <- function(pkg) {

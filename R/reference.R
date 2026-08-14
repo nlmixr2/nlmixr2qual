@@ -42,6 +42,8 @@ qual_reference_read <- function(path) {
                             simplifyDataFrame = TRUE)
   if (is.null(ref$reference$params)) ref$reference$params <- data.frame()
   if (is.null(ref$reference$shrink)) ref$reference$shrink <- data.frame()
+  if (is.null(ref$reference$initial_estimates))
+    ref$reference$initial_estimates <- data.frame()
   ref
 }
 

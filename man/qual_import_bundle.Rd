@@ -12,7 +12,8 @@ qual_import_bundle(
   control = NULL,
   description = "",
   stochastic = NULL,
-  category = ""
+  category = "",
+  initial_estimates = NULL
 )
 }
 \arguments{
@@ -31,6 +32,16 @@ qual_import_bundle(
 \item{stochastic}{Optional logical; default inferred from the method.}
 
 \item{category}{Optional method-family label for tolerance reporting.}
+
+\item{initial_estimates}{Starting values for re-fitting this reference.
+\code{NULL} (default) uses the bundle's own pre-fit priors (\code{fit$iniDf0},
+preserved by \code{nlmixr2save::saveFit()}) -- NOT the fitted/post-fit values
+baked into the reconstructed model source, so a local re-fit reproduces
+the original cold-start optimizer trajectory instead of warm-starting
+from the answer. Otherwise a named numeric vector/list overriding
+specific parameter names (unnamed ones keep the bundle's iniDf0 value),
+or a compiled rxode2/nlmixr2 model object (or an unevaluated model
+function) whose own \verb{$iniDf} starting values are used instead.}
 }
 \value{
 A reference list (see \code{\link[=qual_reference_write]{qual_reference_write()}}).

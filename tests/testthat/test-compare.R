@@ -31,6 +31,17 @@ test_that("convergence mismatch fails regardless of numbers", {
   expect_false(cmp$detail$pass[cmp$detail$quantity == "converged"])
 })
 
+test_that("shrink drift is reported but never gates the verdict", {
+  base <- qual_extract_fit(fake_fit(), "M", "focei", "Linearized", FALSE, 1L)
+  drift <- fake_fit()
+  drift$shrink$eta.cl <- 0.3   # 12 -> 0.3: >90% relative drift, tol 5%
+  run <- qual_extract_fit(drift, "M", "focei", "Linearized", FALSE, 1L)
+  cmp <- qual_compare(run, base)
+  bad <- cmp$detail[cmp$detail$quantity == "shrink:eta.cl", ]
+  expect_false(bad$pass)          # still flagged in the detail table
+  expect_true(cmp$pass)           # but does not fail the overall verdict
+})
+
 test_that("invariance mode applies the looser tolerance", {
   # ofv keeps a tight deterministic tolerance (1e-3) below the invariance
   # floor (1e-2), unlike theta/omega/sigma (1e-2 default == the floor).

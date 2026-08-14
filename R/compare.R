@@ -62,6 +62,11 @@ qual_compare <- function(run, base, overrides = NULL, invariance = FALSE) {
   detail <- rbind(detail, conv)
   rownames(detail) <- NULL
 
+  # Shrinkage is reported but never gates the verdict: near-zero shrink values
+  # (commonly well under 1%) can swing by a large RELATIVE amount from tiny
+  # absolute noise, making any percentage tolerance unreliable as a pass/fail
+  # gate. Parameter estimates, their precision (se/rse), and ofv are gating.
+  gating <- detail$class != "shrink"
   list(model = run$model, method = run$method,
-       pass = all(detail$pass), detail = detail)
+       pass = all(detail$pass[gating]), detail = detail)
 }
