@@ -16,18 +16,21 @@ Depends:
     R (== 4.6.1)
 Imports:
     jsonlite,
+    nlmixr2est,
+    nlmixr2save,
     parallel,
+    rxode2,
     stats,
     utils
+Remotes:
+    nlmixr2/nlmixr2save
 Suggests:
     callr,
     data.table,
     nlmixr2,
-    nlmixr2est,
     nlmixr2lib,
     nlmixr2data,
     pkgload,
-    rxode2,
     qs2,
     ggplot2,
     knitr,
