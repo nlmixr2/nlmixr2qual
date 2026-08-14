@@ -1,8 +1,8 @@
 # report.R
 
 #' Assemble the results bundle and (optionally) render the Quarto report
-#' @param run The [qual_run()] output.
-#' @param version_gate The [qual_version_gate()] output.
+#' @param run The `qual_run()` output.
+#' @param version_gate The `qual_version_gate()` output.
 #' @param dir Output directory.
 #' @param render Logical; render the Quarto report (needs quarto + fits done).
 #' @param formats Character vector of Quarto formats (default "html").

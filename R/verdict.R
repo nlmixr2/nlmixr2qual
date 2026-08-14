@@ -2,7 +2,7 @@
 
 #' Aggregate per-model results into an overall verdict
 #' @param results List of result records (each has $pass, $strict).
-#' @param version_gate The list returned by [qual_version_gate()].
+#' @param version_gate The list returned by `qual_version_gate()`.
 #' @return `list(verdict = "PASS"/"FAIL", n_strict, n_strict_fail, n_info_fail)`.
 #' @export
 qual_verdict <- function(results, version_gate) {

@@ -13,9 +13,9 @@ qual_report(
 )
 }
 \arguments{
-\item{run}{The \code{\link[=qual_run]{qual_run()}} output.}
+\item{run}{The \code{qual_run()} output.}
 
-\item{version_gate}{The \code{\link[=qual_version_gate]{qual_version_gate()}} output.}
+\item{version_gate}{The \code{qual_version_gate()} output.}
 
 \item{dir}{Output directory.}
 

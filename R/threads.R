@@ -50,3 +50,17 @@ qual_inner_threads <- function() {
   v <- Sys.getenv("NLMIXR2QUAL_INNER_THREADS", "1")
   max(1L, as.integer(v))
 }
+
+#' A stable multi-thread count for the thread-invariance stage
+#'
+#' The invariance check only needs inner threads > 1 to be meaningful; it does
+#' not benefit from all cores, and pinning the count to the full core count
+#' oversubscribes small problems and can crash the OpenMP/rxode2 solver on
+#' many-core machines. Cap it to a modest, stable value (default 4).
+#' @param cores Available cores.
+#' @param cap Maximum inner threads to use.
+#' @return An integer inner-thread count for the invariance stage.
+#' @export
+qual_invariance_threads <- function(cores = parallel::detectCores(), cap = 4L) {
+  max(1L, min(as.integer(cap), as.integer(cores)))
+}

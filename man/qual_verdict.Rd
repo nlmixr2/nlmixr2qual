@@ -9,7 +9,7 @@ qual_verdict(results, version_gate)
 \arguments{
 \item{results}{List of result records (each has $pass, $strict).}
 
-\item{version_gate}{The list returned by \code{\link[=qual_version_gate]{qual_version_gate()}}.}
+\item{version_gate}{The list returned by \code{qual_version_gate()}.}
 }
 \value{
 \code{list(verdict = "PASS"/"FAIL", n_strict, n_strict_fail, n_info_fail)}.
