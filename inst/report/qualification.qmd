@@ -1,6 +1,9 @@
 ---
 title: "nlmixr2qual Qualification Summary"
-format: html
+format:
+  html:
+    toc: true
+    embed-resources: true
 params:
   result_rds: ""
 ---
@@ -8,10 +11,47 @@ params:
 ```{r}
 #| echo: false
 res <- readRDS(params$result_rds)
-knitr::kable(res$summary)
 ```
 
+# Overall verdict
+
 **`r if (isTRUE(res$overall)) "OVERALL: PASS" else "OVERALL: FAIL"`**
+
+Only strict (deterministic-method) references gate this verdict; informational
+(stochastic-method) references are reported below but never gate it.
+
+# Summary
+
+One row per reference: its own recorded objective function value (`ofv_ref`)
+against this install's re-fit (`ofv_local`).
+
+```{r}
+#| echo: false
+knitr::kable(res$summary, row.names = FALSE)
+```
+
+# Per-reference comparisons
+
+Parameter estimates, precisions (standard errors), objective function value,
+and shrinkage for each tested reference, comparing the stored reference value
+against this install's local re-fit.
+
+```{r}
+#| echo: false
+#| results: asis
+for (id in names(res$details)) {
+  row <- res$summary[res$summary$id == id, ]
+  status <- if (isTRUE(row$pass[1])) "PASS" else "FAIL"
+  kind <- if (isTRUE(row$strict[1])) "strict" else "informational"
+  cat("\n## ", id, " — ", status, " (", kind, ")\n\n", sep = "")
+  d <- res$details[[id]]
+  names(d) <- c("Quantity", "Class", "Reference", "Local", "Rel. diff", "Tolerance", "Pass")
+  print(knitr::kable(d, row.names = FALSE, digits = 6))
+  cat("\n")
+}
+```
+
+# Environment & provenance
 
 ```{r}
 #| echo: false

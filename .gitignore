@@ -1,3 +1,5 @@
 qualification_output/
 *.Rproj
 .Rproj.user/
+.Rhistory
+.RData
