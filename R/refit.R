@@ -13,10 +13,9 @@ qual_reference_refit <- function(ref, threads = ref$reference$threads) {
   threads <- as.integer(threads)
   qual_set_threads(threads)                        # pin rxode2 inner threads
   # ref$model$code uses the unqualified ini()/model() modeling DSL, which
-  # only resolves if nlmixr2est is attached to the search path (see the same
-  # requirement documented in qual_import_bundle()).
-  suppressMessages(requireNamespace("nlmixr2est", quietly = TRUE))
-  suppressMessages(library("nlmixr2est", character.only = TRUE))
+  # only resolves if nlmixr2est is attached to the search path (see
+  # .qual_attach_nlmixr2est() in import.R for why and how).
+  .qual_attach_nlmixr2est()
   e <- new.env()
   eval(parse(text = ref$model$code), envir = e)
   model <- get(ref$model$name, envir = e)

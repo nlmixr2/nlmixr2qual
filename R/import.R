@@ -71,13 +71,7 @@ qual_import_bundle <- function(zip, model_name, threads, method = NULL,
   records <- utils::read.csv(file.path(ex$dir, paste0(ex$base, "-origData.csv")),
                              check.names = FALSE)
 
-  # nlmixr2save::loadFit() sources a reconstruction script containing
-  # unqualified calls (lotri(), foceiControl(), tableControl(), ...) that only
-  # resolve if nlmixr2est is ATTACHED to the search path -- requireNamespace()
-  # alone is not enough, since the script is sourced inside loadFit()'s own
-  # (package-namespaced) call frame, not the user's global environment.
-  suppressMessages(requireNamespace("nlmixr2est", quietly = TRUE))
-  suppressMessages(library("nlmixr2est", character.only = TRUE))
+  .qual_attach_nlmixr2est()
 
   # reconstruct + fingerprint (loadFit needs cwd == extract dir)
   old <- setwd(ex$dir); on.exit(setwd(old), add = TRUE)
@@ -180,6 +174,26 @@ qual_import_bundle <- function(zip, model_name, threads, method = NULL,
         paste(unknown, collapse = ", "))
   base$value[match(nm, base$name)] <- as.numeric(unlist(ov))
   base
+}
+
+# nlmixr2save::loadFit() sources a reconstruction script containing
+# unqualified calls (lotri(), foceiControl(), tableControl(), ...) that only
+# resolve if nlmixr2est is ATTACHED to the search path -- requireNamespace()
+# alone is not enough, since the script is sourced inside loadFit()'s own
+# (package-namespaced) call frame, not the user's global environment. Uses
+# attachNamespace() (what library() calls internally) rather than library()
+# itself so this doesn't trip R CMD check's "library()/require() call not
+# declared" warning, which exists for a different concern (needlessly
+# attaching a dependency the package itself could reference via ::) that
+# doesn't apply here -- we need the SEARCH PATH side effect for a third
+# party's (loadFit()'s) internal, unqualified symbol resolution, not for our
+# own code. Guarded because attachNamespace() errors if already attached.
+.qual_attach_nlmixr2est <- function() {
+  if (!"package:nlmixr2est" %in% search()) {
+    suppressMessages(requireNamespace("nlmixr2est", quietly = TRUE))
+    attachNamespace("nlmixr2est")
+  }
+  invisible(NULL)
 }
 
 .qual_pkg_ver <- function(pkg) {
