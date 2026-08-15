@@ -28,7 +28,7 @@ Remotes:
 Suggests:
     callr,
     data.table,
-    nlmixr2,
+    nlmixr2 (>= 7.0.1),
     nlmixr2lib,
     nlmixr2data,
     pkgload,
