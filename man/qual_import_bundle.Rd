@@ -13,6 +13,7 @@ qual_import_bundle(
   description = "",
   stochastic = NULL,
   category = "",
+  seed = NULL,
   initial_estimates = NULL
 )
 }
@@ -32,6 +33,15 @@ qual_import_bundle(
 \item{stochastic}{Optional logical; default inferred from the method.}
 
 \item{category}{Optional method-family label for tolerance reporting.}
+
+\item{seed}{Optional integer random seed for stochastic methods (\code{saem},
+\code{fsaem}, \code{imp}, \code{impmap}, \code{qrpem}). \code{NULL} (default) uses the seed
+already present in the bundle's own fit control, if any (e.g. the
+bundle was fit with \code{saemControl(seed = 99)}); an explicit value
+overrides that. \code{\link[=qual_reference_refit]{qual_reference_refit()}} passes the stored seed into the
+method-appropriate control constructor, making a same-seed re-fit of a
+stochastic method exactly reproducible rather than merely
+tolerance-compared.}
 
 \item{initial_estimates}{Starting values for re-fitting this reference.
 \code{NULL} (default) uses the bundle's own pre-fit priors (\code{fit$iniDf0},

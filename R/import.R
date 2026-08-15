@@ -34,6 +34,14 @@
 #' @param description Optional model description string.
 #' @param stochastic Optional logical; default inferred from the method.
 #' @param category Optional method-family label for tolerance reporting.
+#' @param seed Optional integer random seed for stochastic methods (`saem`,
+#'   `fsaem`, `imp`, `impmap`, `qrpem`). `NULL` (default) uses the seed
+#'   already present in the bundle's own fit control, if any (e.g. the
+#'   bundle was fit with `saemControl(seed = 99)`); an explicit value
+#'   overrides that. [qual_reference_refit()] passes the stored seed into the
+#'   method-appropriate control constructor, making a same-seed re-fit of a
+#'   stochastic method exactly reproducible rather than merely
+#'   tolerance-compared.
 #' @param initial_estimates Starting values for re-fitting this reference.
 #'   `NULL` (default) uses the bundle's own pre-fit priors (`fit$iniDf0`,
 #'   preserved by `nlmixr2save::saveFit()`) -- NOT the fitted/post-fit values
@@ -48,7 +56,7 @@
 qual_import_bundle <- function(zip, model_name, threads, method = NULL,
                                control = NULL, description = "",
                                stochastic = NULL, category = "",
-                               initial_estimates = NULL) {
+                               seed = NULL, initial_estimates = NULL) {
   if (missing(threads) || is.null(threads) || is.na(threads))
     stop("qual_import_bundle(): `threads` (fit thread count) is required")
   threads <- as.integer(threads)
@@ -82,6 +90,7 @@ qual_import_bundle <- function(zip, model_name, threads, method = NULL,
                          category = category, stochastic = stochastic,
                          threads = threads)
   ie <- .qual_resolve_initial_estimates(initial_estimates, fit)
+  seed <- .qual_resolve_seed(seed, fit, method)
   setwd(old)
 
   ref <- list(
@@ -90,7 +99,7 @@ qual_import_bundle <- function(zip, model_name, threads, method = NULL,
     model = list(name = model_name, code = model_code, description = description),
     data = list(name = tools::file_path_sans_ext(basename(zip)),
                 records = records),
-    method = list(est = method, control = control),
+    method = list(est = method, control = control, seed = seed),
     reference = list(threads = threads, ofv = fp$ofv, params = fp$params,
                      initial_estimates = ie,
                      shrink = fp$shrink, converged = fp$converged,
@@ -206,3 +215,27 @@ qual_import_bundle <- function(zip, model_name, threads, method = NULL,
 .qual_stochastic_methods <- c("saem", "fsaem", "imp", "impmap", "qrpem",
                               "npag", "npb", "advi", "vae")
 .qual_method_is_stochastic <- function(method) method %in% .qual_stochastic_methods
+
+# The seed field name a method family's control object uses. saem/fsaem take
+# saemControl(seed=); imp/impmap/qrpem all validate against impmapControl()
+# internally (see nlmixr2est's getValidNlmixrCtl.imp/.qrpem) and share its
+# impSeed= field. Methods without a seed concept (e.g. focei) are absent.
+# A named LIST (not a vector): `[[` on a missing name returns NULL for a
+# list but errors ("subscript out of bounds") for an atomic vector.
+.qual_seed_field <- list(saem = "seed", fsaem = "seed",
+                         imp = "impSeed", impmap = "impSeed", qrpem = "impSeed")
+
+# Resolve the seed to store on a reference: an explicit `seed` wins; otherwise
+# fall back to whatever seed the bundle's own fit control already used (if
+# any), read off fit$control -- the generic accessor that works for both
+# fresh and loadFit()-reconstructed fits (see .qual_patch_loaded_fit()'s
+# comment for the general pattern of loadFit() accessor quirks; $control
+# itself has not shown that quirk in testing).
+.qual_resolve_seed <- function(seed, fit, method) {
+  if (!is.null(seed)) return(as.integer(seed))
+  field <- .qual_seed_field[[method]]
+  if (is.null(field)) return(NULL)
+  ctl <- tryCatch(fit$control, error = function(e) NULL)
+  val <- if (is.null(ctl)) NULL else ctl[[field]]
+  if (is.null(val)) NULL else as.integer(val)
+}

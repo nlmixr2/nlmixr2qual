@@ -22,7 +22,7 @@ qual_reference_refit <- function(ref, threads = ref$reference$threads) {
   model <- .qual_apply_initial_estimates(model, ref$reference$initial_estimates)
   data <- as.data.frame(ref$data$records, stringsAsFactors = FALSE)
   est <- ref$method$est
-  control <- .qual_build_control(est, ref$method$control)
+  control <- .qual_build_control(est, ref$method$control, ref$method$seed)
   fit <- if (is.null(control)) {
     nlmixr2est::nlmixr2(model, data, est = est)
   } else {
@@ -33,11 +33,24 @@ qual_reference_refit <- function(ref, threads = ref$reference$threads) {
                    stochastic = ref$reference$stochastic, threads = threads)
 }
 
-# Turn a stored control list into the method-appropriate control object.
-# NULL (no stored control) re-fits on the estimator default.
-.qual_build_control <- function(est, control) {
-  if (is.null(control) || !length(control)) return(NULL)
-  do.call(nlmixr2est::foceiControl, control)  # extend per method family as needed
+# Turn a stored control list (+ optional seed) into the method-appropriate
+# control object. NULL (no stored control, no seed) re-fits on the
+# estimator default. `seed` is injected under the method's own seed field
+# (see .qual_seed_field in import.R) so a pinned seed makes a stochastic
+# re-fit exactly reproducible rather than merely tolerance-compared.
+.qual_build_control <- function(est, control, seed = NULL) {
+  args <- if (is.null(control)) list() else control
+  field <- .qual_seed_field[[est]]
+  if (!is.null(seed) && !is.null(field)) args[[field]] <- as.integer(seed)
+  if (!length(args)) return(NULL)
+  ctl_fn <- switch(est,
+                   saem = ,
+                   fsaem = nlmixr2est::saemControl,
+                   imp = nlmixr2est::impControl,
+                   impmap = nlmixr2est::impmapControl,
+                   qrpem = nlmixr2est::qrpemControl,
+                   nlmixr2est::foceiControl)  # extend per method family as needed
+  do.call(ctl_fn, args)
 }
 
 # Override the reconstructed model's ini() starting values with the

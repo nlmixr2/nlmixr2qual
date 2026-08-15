@@ -21,3 +21,37 @@ test_that("import requires an explicit thread count", {
                                   method = "focei"),
                "threads")
 })
+
+test_that("import captures an explicit seed", {
+  skip_if_no_live()
+  ref <- qual_import_bundle(fixture_bundle(), model_name = "theophylline",
+                            method = "focei", threads = 1L, seed = 42L)
+  expect_equal(ref$method$seed, 42L)
+})
+
+test_that("import extracts a seed already present in the bundle's control", {
+  skip_if_no_live()
+  dir <- tempfile(); dir.create(dir)
+  zip <- build_bundle(dir, "theo_saem_seeded", est = "saem",
+                      control = nlmixr2est::saemControl(seed = 777L, nBurn = 5, nEm = 5))
+  ref <- qual_import_bundle(zip, model_name = "theophylline", method = "saem",
+                            threads = 1L)
+  expect_equal(ref$method$seed, 777L)
+})
+
+test_that("an explicit seed overrides the bundle's own control seed", {
+  skip_if_no_live()
+  dir <- tempfile(); dir.create(dir)
+  zip <- build_bundle(dir, "theo_saem_seeded2", est = "saem",
+                      control = nlmixr2est::saemControl(seed = 777L, nBurn = 5, nEm = 5))
+  ref <- qual_import_bundle(zip, model_name = "theophylline", method = "saem",
+                            threads = 1L, seed = 111L)
+  expect_equal(ref$method$seed, 111L)
+})
+
+test_that("no seed is captured for a method that was not fit with one", {
+  skip_if_no_live()
+  ref <- qual_import_bundle(fixture_bundle(), model_name = "theophylline",
+                            method = "focei", threads = 1L)
+  expect_null(ref$method$seed)
+})
