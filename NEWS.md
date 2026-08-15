@@ -30,3 +30,12 @@ the stored reference fingerprint.
   to absorb the warm-start-vs-cold-start drift inherent to re-fitting from a
   reconstructed model. Shrinkage comparisons are now reported but never gate
   the pass/fail verdict.
+- `qual_import_bundle()` gains a `seed` argument for stochastic methods
+  (`saem`, `fsaem`, `imp`, `impmap`, `qrpem`): explicit if supplied, else
+  read off the bundle's own fit control if it was fit with one.
+  `qual_reference_refit()` injects a stored seed into the method-appropriate
+  control object, making a same-seed re-fit exactly reproducible. The
+  shipped internal set's stochastic references are now seed-pinned (seed
+  99); `imp`/`impmap`/`qrpem` reproduce cleanly, `saem` still deviates
+  slightly due to its bounded `tcl` theta's internal reparameterization (see
+  `docs/references.md`) but remains informational either way.

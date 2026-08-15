@@ -20,7 +20,8 @@
   },
   "method": {
     "est": "laplace",
-    "control": null
+    "control": null,
+    "seed": null
   },
   "reference": {
     "threads": 1,
@@ -54,7 +55,7 @@
       "rxode2": "5.1.6",
       "R": "4.6.1"
     },
-    "created": "2026-08-15T09:16:29+0200",
+    "created": "2026-08-15T14:02:29+0200",
     "source_bundle": "theophylline_laplace_t1.zip",
     "nlmixr2save_version": "0.2.0"
   }

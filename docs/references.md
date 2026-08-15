@@ -21,7 +21,7 @@ schema_version
 id                                  "<model>__<method>__t<threads>"
 model    { name, code, description }
 data     { name, records }          the fit's input dataset, embedded
-method   { est, control }
+method   { est, control, seed }
 reference {
   threads, ofv, params, shrink, converged, covMethod, stochastic, category,
   initial_estimates                 starting values for re-fitting
@@ -34,6 +34,15 @@ provenance { software, created, source_bundle, nlmixr2save_version }
 baked into the reconstructed model source — this is what lets a local re-fit
 reproduce the *original* optimizer trajectory (cold start) rather than
 warm-starting from the answer. See `qual_import_bundle()`.
+
+`method$seed` is an optional integer random seed for stochastic methods
+(`saem`, `fsaem`, `imp`, `impmap`, `qrpem`). If present, `qual_reference_refit()`
+injects it into the method-appropriate control object (`saemControl(seed=)`
+for saem/fsaem; `impControl()`/`impmapControl()`/`qrpemControl()`'s
+`impSeed=` for imp/impmap/qrpem), making a same-seed re-fit exactly
+reproducible rather than only tolerance-compared. `qual_import_bundle()`'s
+`seed` argument sets it explicitly; if omitted, it is read off the bundle's
+own fit control when the bundle was itself fit with one.
 
 **Identity:**
 
@@ -84,21 +93,31 @@ qual_catalogue_md(qual_load_references("internal"))
 | theophylline__focei__t4 | theophylline | focei | 4 | 116.8038 | FALSE | 7.0.1 |
 | theophylline__focep__t1 | theophylline | focep | 1 | 116.8037 | FALSE | 7.0.1 |
 | theophylline__focep__t4 | theophylline | focep | 4 | 116.8037 | FALSE | 7.0.1 |
-| theophylline__imp__t1 | theophylline | imp | 1 | 116.8271 | TRUE | 7.0.1 |
-| theophylline__imp__t4 | theophylline | imp | 4 | 116.8271 | TRUE | 7.0.1 |
-| theophylline__impmap__t1 | theophylline | impmap | 1 | 116.8292 | TRUE | 7.0.1 |
-| theophylline__impmap__t4 | theophylline | impmap | 4 | 116.8292 | TRUE | 7.0.1 |
+| theophylline__imp__t1 | theophylline | imp | 1 | 116.8312 | TRUE | 7.0.1 |
+| theophylline__imp__t4 | theophylline | imp | 4 | 116.8312 | TRUE | 7.0.1 |
+| theophylline__impmap__t1 | theophylline | impmap | 1 | 116.8291 | TRUE | 7.0.1 |
+| theophylline__impmap__t4 | theophylline | impmap | 4 | 116.8291 | TRUE | 7.0.1 |
 | theophylline__laplace__t1 | theophylline | laplace | 1 | 116.8038 | FALSE | 7.0.1 |
 | theophylline__laplace__t4 | theophylline | laplace | 4 | 116.8038 | FALSE | 7.0.1 |
-| theophylline__qrpem__t1 | theophylline | qrpem | 1 | 116.8324 | TRUE | 7.0.1 |
-| theophylline__qrpem__t4 | theophylline | qrpem | 4 | 116.8324 | TRUE | 7.0.1 |
+| theophylline__qrpem__t1 | theophylline | qrpem | 1 | 116.8727 | TRUE | 7.0.1 |
+| theophylline__qrpem__t4 | theophylline | qrpem | 4 | 116.8727 | TRUE | 7.0.1 |
 | theophylline__saem__t1 | theophylline | saem | 1 | 122.0067 | TRUE | 7.0.1 |
 | theophylline__saem__t4 | theophylline | saem | 4 | 122.0067 | TRUE | 7.0.1 |
 
 `focei`, `foce`, `focep`, `laplace`, and `agq` are deterministic and
 **strict** — they gate the qualification verdict. `saem`, `imp`, `impmap`,
 and `qrpem` are stochastic; they are re-fit and compared under the looser
-stochastic tolerance and reported, but never gate the verdict.
+stochastic tolerance and reported, but never gate the verdict. All four are
+seed-pinned (seed 99, via `data-raw/make-theophylline-references.R`'s
+`.qual_stochastic_control()`) for same-machine reproducibility; `imp`,
+`impmap`, and `qrpem` reproduce cleanly under the stochastic tolerance.
+`saem` still deviates slightly even seeded: its bounded `tcl` theta is
+reported under an internal `rxBoundedTr.tcl` alias on a transform scale
+`nlmixr2qual` cannot safely invert (see `initial_estimates` above), so the
+re-fit starts `tcl` from a slightly different point than the original fit
+did, and SAEM's stochastic trajectory diverges from there even with an
+identical seed. It stays informational either way, so this does not affect
+the overall verdict.
 
 Regenerate the set (e.g. after an `nlmixr2est` upgrade) with:
 

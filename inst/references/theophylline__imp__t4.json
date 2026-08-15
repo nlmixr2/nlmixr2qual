@@ -3,7 +3,7 @@
   "id": "theophylline__imp__t4",
   "model": {
     "name": "theophylline",
-    "code": "theophylline <- function () \n{\n    ini({\n        tka <- 0.463607975010767\n        tcl <- c(-Inf, 1.01170877736975, 4.60517018598809)\n        tv <- 3.45492844215254\n        add.sd <- c(0, 0.699202740979856)\n        eta.ka ~ 0.402377105911843\n        eta.cl ~ 0.0689676963793884\n        eta.v ~ 0.0184781672105529\n    })\n    model({\n        ka <- exp(tka + eta.ka)\n        cl <- exp(tcl + eta.cl)\n        v <- exp(tv + eta.v)\n        linCmt() ~ add(add.sd)\n    })\n}\ntheophylline <- rxode2::rxode2(theophylline)\ntheophylline <- rxode2::rxUiDecompress(theophylline)\nassign(\"modelName\", \"one.cmt\", envir=, theophylline)\nrm(\"model\", envir=theophylline)\ntheophylline <- rxode2::rxUiCompress(theophylline)\n",
+    "code": "theophylline <- function () \n{\n    ini({\n        tka <- 0.459605477255693\n        tcl <- c(-Inf, 1.01239973062692, 4.60517018598809)\n        tv <- 3.45357898623298\n        add.sd <- c(0, 0.695999276971703)\n        eta.ka ~ 0.397357179805758\n        eta.cl ~ 0.0709815997098858\n        eta.v ~ 0.0181217523888661\n    })\n    model({\n        ka <- exp(tka + eta.ka)\n        cl <- exp(tcl + eta.cl)\n        v <- exp(tv + eta.v)\n        linCmt() ~ add(add.sd)\n    })\n}\ntheophylline <- rxode2::rxode2(theophylline)\ntheophylline <- rxode2::rxUiDecompress(theophylline)\nassign(\"modelName\", \"one.cmt\", envir=, theophylline)\nrm(\"model\", envir=theophylline)\ntheophylline <- rxode2::rxUiCompress(theophylline)\n",
     "description": "1-compartment oral PK, theophylline"
   },
   "data": {
@@ -20,17 +20,18 @@
   },
   "method": {
     "est": "imp",
-    "control": null
+    "control": null,
+    "seed": 99
   },
   "reference": {
     "threads": 4,
-    "ofv": 116.827117163724,
+    "ofv": 116.831243501698,
     "params": {
       "name": ["tka", "tcl", "tv", "add.sd", "eta.ka", "eta.cl", "eta.v"],
       "ptype": ["theta", "theta", "theta", "theta", "omega", "omega", "omega"],
-      "estimate": [0.463607975010767, 1.01170877736975, 3.45492844215254, 0.699202740979856, 0.402377105911843, 0.0689676963793884, 0.0184781672105529],
-      "se": [0.223034965024574, 0.0752022311935131, 0.0457638543512518, 0.0508037831106709, null, null, null],
-      "rse": [48.1085263943946, 7.43318955767337, 1.32459630112453, 7.2659588032328, null, null, null]
+      "estimate": [0.459605477255693, 1.01239973062692, 3.45357898623298, 0.695999276971703, 0.397357179805758, 0.0709815997098858, 0.0181217523888661],
+      "se": [null, 0.0779729750314844, 0.0287490266374402, 0.0492556358463956, null, null, null],
+      "rse": [null, 7.70179729139204, 0.832441555616439, 7.07696652512444, null, null, null]
     },
     "initial_estimates": {
       "name": ["tka", "tcl", "tv", "add.sd", "eta.ka", "eta.cl", "eta.v"],
@@ -40,7 +41,7 @@
     "shrink": {
       "name": ["eta.ka", "eta.cl", "eta.v", "IWRES"],
       "stype": ["eta", "eta", "eta", "eta"],
-      "value": [-0.0126755713858111, 0.00436640780668598, -0.00363476716741165, -0.0527308751097648]
+      "value": [-0.00980488809135336, 0.00432401418817979, -0.00284884637085836, -0.0526325536633308]
     },
     "converged": true,
     "covMethod": "imp",
@@ -54,7 +55,7 @@
       "rxode2": "5.1.6",
       "R": "4.6.1"
     },
-    "created": "2026-08-15T09:19:01+0200",
+    "created": "2026-08-15T14:04:53+0200",
     "source_bundle": "theophylline_imp_t4.zip",
     "nlmixr2save_version": "0.2.0"
   }

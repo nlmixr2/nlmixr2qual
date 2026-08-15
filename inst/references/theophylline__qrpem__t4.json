@@ -3,7 +3,7 @@
   "id": "theophylline__qrpem__t4",
   "model": {
     "name": "theophylline",
-    "code": "theophylline <- function () \n{\n    ini({\n        tka <- 0.459452647716759\n        tcl <- c(-Inf, 1.01230590594212, 4.60517018598809)\n        tv <- 3.45382608391327\n        add.sd <- c(0, 0.689551105396137)\n        eta.ka ~ 0.406113657269785\n        eta.cl ~ 0.0702457268781968\n        eta.v ~ 0.018591020022676\n    })\n    model({\n        ka <- exp(tka + eta.ka)\n        cl <- exp(tcl + eta.cl)\n        v <- exp(tv + eta.v)\n        linCmt() ~ add(add.sd)\n    })\n}\ntheophylline <- rxode2::rxode2(theophylline)\ntheophylline <- rxode2::rxUiDecompress(theophylline)\nassign(\"modelName\", \"one.cmt\", envir=, theophylline)\nrm(\"model\", envir=theophylline)\ntheophylline <- rxode2::rxUiCompress(theophylline)\n",
+    "code": "theophylline <- function () \n{\n    ini({\n        tka <- 0.45949261120309\n        tcl <- c(-Inf, 1.01151010512984, 4.60517018598809)\n        tv <- 3.45380067076651\n        add.sd <- c(0, 0.705506388249785)\n        eta.ka ~ 0.404621797177143\n        eta.cl ~ 0.0701792899389424\n        eta.v ~ 0.0185177306943769\n    })\n    model({\n        ka <- exp(tka + eta.ka)\n        cl <- exp(tcl + eta.cl)\n        v <- exp(tv + eta.v)\n        linCmt() ~ add(add.sd)\n    })\n}\ntheophylline <- rxode2::rxode2(theophylline)\ntheophylline <- rxode2::rxUiDecompress(theophylline)\nassign(\"modelName\", \"one.cmt\", envir=, theophylline)\nrm(\"model\", envir=theophylline)\ntheophylline <- rxode2::rxUiCompress(theophylline)\n",
     "description": "1-compartment oral PK, theophylline"
   },
   "data": {
@@ -20,17 +20,18 @@
   },
   "method": {
     "est": "qrpem",
-    "control": null
+    "control": null,
+    "seed": 99
   },
   "reference": {
     "threads": 4,
-    "ofv": 116.832397326446,
+    "ofv": 116.872650297329,
     "params": {
       "name": ["tka", "tcl", "tv", "add.sd", "eta.ka", "eta.cl", "eta.v"],
       "ptype": ["theta", "theta", "theta", "theta", "omega", "omega", "omega"],
-      "estimate": [0.459452647716759, 1.01230590594212, 3.45382608391327, 0.689551105396137, 0.406113657269785, 0.0702457268781968, 0.018591020022676],
-      "se": [0.186042537578162, 0.0840792310040885, 0.0447494717349903, 0.0486356337661321, null, null, null],
-      "rse": [40.4922114395676, 8.30571376799769, 1.29564924949226, 7.05323120875742, null, null, null]
+      "estimate": [0.45949261120309, 1.01151010512984, 3.45380067076651, 0.705506388249785, 0.404621797177143, 0.0701792899389424, 0.0185177306943769],
+      "se": [0.18986442611215, 0.0853009970365305, 0.0453385279617573, 0.0515110460603453, null, null, null],
+      "rse": [41.3204524910699, 8.43303458897045, 1.31271408757053, 7.30128697886543, null, null, null]
     },
     "initial_estimates": {
       "name": ["tka", "tcl", "tv", "add.sd", "eta.ka", "eta.cl", "eta.v"],
@@ -40,7 +41,7 @@
     "shrink": {
       "name": ["eta.ka", "eta.cl", "eta.v", "IWRES"],
       "stype": ["eta", "eta", "eta", "eta"],
-      "value": [-0.0088059109899778, 0.00432016662056841, -0.00291174539320241, -0.0529861862605765]
+      "value": [-0.0095430587437704, 0.00482854850396845, -0.00290294703768874, -0.0524451473770106]
     },
     "converged": true,
     "covMethod": "imp",
@@ -54,7 +55,7 @@
       "rxode2": "5.1.6",
       "R": "4.6.1"
     },
-    "created": "2026-08-15T09:19:46+0200",
+    "created": "2026-08-15T14:05:08+0200",
     "source_bundle": "theophylline_qrpem_t4.zip",
     "nlmixr2save_version": "0.2.0"
   }

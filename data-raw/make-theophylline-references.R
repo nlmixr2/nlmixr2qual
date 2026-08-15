@@ -22,6 +22,18 @@ thread_counts <- c(1L)
 if (parallel::detectCores() >= qual_default_multi_threads())
   thread_counts <- c(thread_counts, qual_default_multi_threads())
 
+# Stochastic methods are pinned to a fixed seed so a same-machine re-fit is
+# exactly reproducible rather than only tolerance-compared (see
+# qual_import_bundle()'s `seed` argument / R/refit.R's control building).
+.qual_stochastic_control <- function(m, seed = 99L) {
+  switch(m,
+        saem = , fsaem = nlmixr2est::saemControl(seed = seed),
+        imp = nlmixr2est::impControl(impSeed = seed),
+        impmap = nlmixr2est::impmapControl(impSeed = seed),
+        qrpem = nlmixr2est::qrpemControl(impSeed = seed),
+        NULL)
+}
+
 outdir <- "inst/references"; dir.create(outdir, showWarnings = FALSE, recursive = TRUE)
 tmp <- file.path(tempdir(), "theo-bundles"); dir.create(tmp, showWarnings = FALSE)
 
@@ -29,8 +41,11 @@ for (nthr in thread_counts) {
   for (m in methods) {
     message("fitting theophylline / ", m, " @ ", nthr, " thread(s)")
     rxode2::rxClean(); rxode2::setRxThreads(nthr)
-    fit <- tryCatch(nlmixr2(one.cmt, theo_sd, est = m),
-                    error = function(e) { message("  skip: ", conditionMessage(e)); NULL })
+    ctl <- .qual_stochastic_control(m)
+    fit <- tryCatch(
+      if (is.null(ctl)) nlmixr2(one.cmt, theo_sd, est = m)
+      else nlmixr2(one.cmt, theo_sd, est = m, control = ctl),
+      error = function(e) { message("  skip: ", conditionMessage(e)); NULL })
     if (is.null(fit)) next
     old <- setwd(tmp); base <- paste0("theophylline_", m, "_t", nthr)
     unlink(paste0(base, ".zip")); nlmixr2save::saveFit(fit, base, zip = TRUE)
