@@ -1,14 +1,15 @@
 Package: nlmixr2qual
 Title: Qualification Suite for nlmixr2
-Version: 0.0.0.9000
+Version: 0.1.0
 Authors@R:
     person("Justin", "Wilkins", , "justin.wilkins@occams.com", role = c("aut", "cre"))
-Description: Reproducibility qualification of an nlmixr2 installation. Re-fits a
-    curated set of nlmixr2lib models against a shipped single-threaded canonical
-    baseline, checks parameter/OFV/SE reproduction within tolerance across all
-    estimation methods, qualifies multi-threaded fitting by a thread-invariance
-    check, and renders a Quarto qualification report with an overall PASS/FAIL
-    verdict.
+Description: Reproducibility qualification of an nlmixr2 installation.
+    References are known-good fits imported from 'nlmixr2save' bundles and
+    stored as self-contained JSON, each tagged with the thread count that
+    produced it. Qualifying an install re-fits each reference locally, at
+    its own thread count, and compares the result against the stored
+    reference within tolerance, rendering a Quarto summary with an overall
+    PASS/FAIL verdict.
 License: GPL (>= 3)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

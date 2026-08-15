@@ -9,6 +9,7 @@ fake_result <- function(pass = TRUE, overall = TRUE, threads = 1L) {
 }
 
 test_that("summary report writes an HTML file from a result", {
+  skip_on_cran()   # depends on the external quarto CLI, not just the R package
   skip_if_not_installed("quarto")
   out <- tempfile(fileext = ".html")
   qual_summary_report(fake_result(), out)

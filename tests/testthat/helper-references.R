@@ -2,6 +2,7 @@ fixture_bundle <- function(name = "theophylline_focei.zip") {
   testthat::test_path("fixtures", name)
 }
 skip_if_no_live <- function() {
+  testthat::skip_on_cran()   # live model fitting is far too slow for CRAN's check
   testthat::skip_if_not_installed("nlmixr2est")
   testthat::skip_if_not_installed("nlmixr2save")
   testthat::skip_if(!nzchar(Sys.getenv("NLMIXR2QUAL_RUN_LIVE")),
