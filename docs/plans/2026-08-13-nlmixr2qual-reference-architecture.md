@@ -950,7 +950,7 @@ git commit -m "feat: shipped theophylline reference set (t1 + t4) across fitting
 - Create: `R/catalogue.R`
 - Test: `tests/testthat/test-catalogue.R`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```r
 test_that("catalogue summarises references as a data frame", {
@@ -968,12 +968,12 @@ test_that("catalogue renders a Markdown table", {
 })
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `Rscript -e 'pkgload::load_all("."); testthat::test_file("tests/testthat/test-catalogue.R")'`
 Expected: FAIL — `qual_catalogue` not found.
 
-- [ ] **Step 3: Implement `R/catalogue.R`**
+- [x] **Step 3: Implement `R/catalogue.R`**
 
 ```r
 # catalogue.R -- document reference models/methods/results.
@@ -1012,12 +1012,12 @@ qual_catalogue_md <- function(refs) {
 }
 ```
 
-- [ ] **Step 4: Run to verify pass**
+- [x] **Step 4: Run to verify pass**
 
 Run: `Rscript -e 'pkgload::load_all("."); testthat::test_file("tests/testthat/test-catalogue.R")'`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add R/catalogue.R tests/testthat/test-catalogue.R
@@ -1033,7 +1033,7 @@ git commit -m "feat: reference-catalogue documentation (data frame + Markdown)"
 - Rewrite: `inst/report/qualification.qmd`
 - Test: `tests/testthat/test-summary-report.R`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```r
 fake_result <- function(pass = TRUE, overall = TRUE, threads = 1L) {
@@ -1069,12 +1069,12 @@ test_that("verdict shows FAIL when a strict reference fails", {
 })
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `Rscript -e 'pkgload::load_all("."); testthat::test_file("tests/testthat/test-summary-report.R")'`
 Expected: FAIL — `qual_summary_text` not found.
 
-- [ ] **Step 3: Implement `qual_summary_text()` + `qual_summary_report()` in `R/report.R`**
+- [x] **Step 3: Implement `qual_summary_text()` + `qual_summary_report()` in `R/report.R`**
 
 ```r
 #' Write a plain-text qualification verdict + per-reference summary
@@ -1110,7 +1110,7 @@ qual_summary_report <- function(res, path) {
 }
 ```
 
-- [ ] **Step 4: Rewrite `inst/report/qualification.qmd`**
+- [x] **Step 4: Rewrite `inst/report/qualification.qmd`**
 
 ````markdown
 ---
@@ -1134,12 +1134,12 @@ str(res$provenance)
 ```
 ````
 
-- [ ] **Step 5: Run to verify pass**
+- [x] **Step 5: Run to verify pass**
 
 Run: `Rscript -e 'pkgload::load_all("."); testthat::test_file("tests/testthat/test-summary-report.R")'`
 Expected: PASS (HTML test skips if `quarto` not installed).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add R/report.R inst/report/qualification.qmd tests/testthat/test-summary-report.R
@@ -1154,7 +1154,7 @@ git commit -m "feat: qualification summary document (HTML + thread-aware text ve
 - Create: `run_qualification.R`
 - Modify: `README.md`, `NEWS.md`; rename `docs/models-and-methods.md` → `docs/references.md`
 
-- [ ] **Step 1: Write `run_qualification.R`**
+- [x] **Step 1: Write `run_qualification.R`**
 
 ```r
 #!/usr/bin/env Rscript
@@ -1172,23 +1172,23 @@ cat(readLines("qualification_output/verdict.txt"), sep = "\n")
 quit(status = if (isTRUE(res$overall)) 0L else 1L)
 ```
 
-- [ ] **Step 2: Update README.md**
+- [x] **Step 2: Update README.md**
 
 Replace the "how it works" section with: create references by importing a confirmed-good fit (`nlmixr2save::saveFit()` → `qual_import_bundle(zip, model_name, method, threads=…)`), ship/point-to a folder of JSON references, run `qualify()` / `Rscript run_qualification.R [folder]`. Document `which` (default `"all"`, or pairs/ids) and `source` (`"internal"` default, or a folder). Explain the thread model: each reference is thread-tagged and re-fit at that count; `t1` is mandatory and `tx` optional; the shipped set includes a `t1` reference (strict, bit-portable) per method and, where the build box supports it, an optional `t4` reference (default 4 cores, compared under the looser thread tolerance); orgs add their own references at any thread count by importing one bundle per count.
 
-- [ ] **Step 3: Rework docs/models-and-methods.md → docs/references.md**
+- [x] **Step 3: Rework docs/models-and-methods.md → docs/references.md**
 
 ```bash
 git mv docs/models-and-methods.md docs/references.md
 ```
 Rewrite to describe: the JSON reference schema (incl. `reference$threads`), the shipped theophylline set (mandatory `t1`, optional `t4`; from the catalogue table), that multi-threaded references are optional (a `t1`-only set is valid), how an org imports one bundle per thread count to create references at any thread count, and the thread-tolerance design (strict for `t1`, looser for `t>1`).
 
-- [ ] **Step 4: Verify the full runner end-to-end**
+- [x] **Step 4: Verify the full runner end-to-end**
 
 Run: `NLMIXR2QUAL_RUN_LIVE=1 Rscript run_qualification.R`
 Expected: prints `OVERALL: PASS`, exit 0, writes `qualification_output/verdict.txt`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add run_qualification.R README.md docs/references.md NEWS.md
