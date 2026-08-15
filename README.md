@@ -47,8 +47,11 @@ environment is recorded in the report for comparison against the reference.
 
    ```sh
    Rscript run_qualification.R              # internal references
-   Rscript run_qualification.R path/to/dir  # or: qualify.bat (Windows)
+   Rscript run_qualification.R path/to/dir  # or a folder of your own
    ```
+
+   `qualify.bat` is the Windows-shell equivalent — `qualify.bat` or
+   `qualify.bat path\to\dir`.
 
    For each selected reference, `qualify()` sets the reference's own thread
    count, re-fits the model locally, and compares the fresh fingerprint
@@ -67,14 +70,20 @@ count (thanks to non-associative parallel float reductions), so an exact match c
 realistically be produced for `threads > 1`. Each reference is a single result, tagged
 with the thread count that produced it, and is only ever compared against
 a re-fit at that same thread count. Single- and multi-threaded results are
-never compared against each other. The comparison tolerance is keyed to the
-reference's thread count:
+never compared against each other. The comparison **tolerance** is keyed to
+the reference's thread count:
 
-- `threads == 1` (`t1`) — strict. Mandatory: every method ships a `t1` reference.
+- `threads == 1` (`t1`) — the tight, bit-portable tolerance. Mandatory:
+  every method ships a `t1` reference.
 - `threads > 1` (e.g. `t4`) — a looser tolerance suitable for parallel-float
   variation. Optional: a method may or may not have a multi-threaded
   reference, and the test machinery works just as well with a `t1`-only set. The
   default multi-thread count for the shipped set and for generators is 4.
+
+This is independent of whether a reference **gates the verdict** — that's
+determined by the estimation method, not the thread count (see "How it
+works" above): a `t1` SAEM reference is still informational, and a `t4`
+FOCEI reference still gates.
 
 You can add coverage for any number of threads by importing one bundle
 per count. `nlmixr2qual` never infers a multi-threaded result from a
