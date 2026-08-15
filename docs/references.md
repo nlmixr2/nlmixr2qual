@@ -1,390 +1,156 @@
-# nlmixr2qual — models and estimation methods
+# nlmixr2qual — references
 
-This document describes what the qualification suite currently covers: the seven
-models it re-fits (the canonical theophylline example on real data in two solver
-variants, three `nlmixr2lib` PK templates, one disease-progression model, and the
-Friberg myelosuppression PKPD model), the estimation methods it exercises, the
-as-fit model code, and a spaghetti plot of each frozen dataset.
+This document describes the JSON reference schema, the shipped internal
+reference set, how an organisation creates its own references, and the
+thread-tolerance design.
 
-> **Reproducibility, not correctness.** These models and datasets are a frozen
-> *regression reference*. A qualification PASS means an installation reproduces
-> the shipped canonical baseline within tolerance — it does not assert the models
-> are physiologically correct or the parameter values are "true". The simulated
-> datasets are deliberately never regenerated (see
-> [`data-raw/simulate-datasets.R`](../data-raw/simulate-datasets.R)).
+> **Reproducibility, not correctness.** A reference is a *confirmed-good
+> fit*, not a ground truth. A qualification PASS means an installation
+> reproduces the reference's stored result within tolerance — it does not
+> assert the model is physiologically correct or the parameter values are
+> "true".
 
-## Coverage at a glance
+## The JSON reference schema
 
-| Model | Domain | Structure | Primary method | IIV (`eta`) |
-|---|---|---|---|---|
-| `theo_1cmt` | popPK | 1-compartment oral, solved (`linCmt`) — **real** theophylline data (**anchor**) | focei | own (Ka, CL, V) |
-| `theo_1cmt_des` | popPK | 1-compartment oral, explicit ODEs — **real** theophylline data | focei | own (Ka, CL, V) |
-| `PK_2cmt` | popPK | 2-compartment oral, solved (**anchor**) | focei | added on CL, V |
-| `PK_3cmt` | popPK | 3-compartment oral, solved | focei | added on CL, V |
-| `PK_2cmt_no_depot` | popPK | 2-compartment IV, explicit ODEs | focei | added on CL, V |
-| `Lee_2011_parkinson_progression` | disease | UPDRS disease-progression + symptomatic effect | focei | own (slope, symptomatic) |
-| `Friberg_2002_paclitaxel` | PKPD | Semi-mechanistic neutrophil myelosuppression | focei | own (baseline, MTT, slope) |
+A reference is one confirmed-good fit, serialised as a self-contained JSON
+file (model source, embedded input data, estimation method, thread count,
+and result fingerprint):
 
-The three bare `PK_*` templates ship with fixed effects only; the suite augments
-each with between-subject variability (IIV) on clearance (`lcl`) and central
-volume (`lvc`) via `nlmixr2lib::addEta()`, so there is a real random-effect signal
-to estimate. The two theophylline models (`theo_1cmt`, `theo_1cmt_des` — the
-canonical nlmixr2 example in its solved and ODE forms, both fit to the **real**
-theophylline dataset), the Lee disease-progression model, and the Friberg
-myelosuppression model already carry their own IIV and are used verbatim.
-Augmentation is applied identically in simulation, fitting, and baseline capture
-through the shared `qual_prepare_model()` helper.
-
----
-
-## popPK models
-
-### theo_1cmt — one-compartment oral (real theophylline data)
-
-The canonical nlmixr2 one-compartment oral example, and the suite's base/sanity
-case — the only model fit to **real** data rather than a simulated reference. It
-uses the classic theophylline single-dose dataset shipped with the stack
-(`nlmixr2data::theo_sd`: 12 subjects, one oral dose each), frozen verbatim to
-`inst/extdata/theo_sd.csv`. First-order absorption into one disposition
-compartment solved with `linCmt()`, with IIV on `Ka`, `CL`, and `V` and an
-additive residual. Used verbatim (`source = "file"`,
-[`inst/models/theo_1cmt.R`](../inst/models/theo_1cmt.R)); its `eta` in the
-registry is blank.
-
-```r
-ini({
-  tka <- 0.45                   # log Ka
-  tcl <- log(c(0, 2.7, 100))    # log CL, with lower/upper bounds
-  tv  <- 3.45                   # log V
-  eta.ka ~ 0.6
-  eta.cl ~ 0.3
-  eta.v  ~ 0.1
-  add.sd <- 0.7                 # additive residual SD
-})
-model({
-  ka <- exp(tka + eta.ka)
-  cl <- exp(tcl + eta.cl)
-  v  <- exp(tv  + eta.v)
-  linCmt() ~ add(add.sd)
-})
+```
+schema_version
+id                                  "<model>__<method>__t<threads>"
+model    { name, code, description }
+data     { name, records }          the fit's input dataset, embedded
+method   { est, control }
+reference {
+  threads, ofv, params, shrink, converged, covMethod, stochastic, category,
+  initial_estimates                 starting values for re-fitting
+}
+provenance { software, created, source_bundle, nlmixr2save_version }
 ```
 
-![theo_1cmt spaghetti plot](figures/theo_1cmt.png)
+`reference$initial_estimates` defaults to the bundle's own pre-fit priors
+(`fit$iniDf0`, preserved by `nlmixr2save::saveFit()`), not the fitted values
+baked into the reconstructed model source — this is what lets a local re-fit
+reproduce the *original* optimizer trajectory (cold start) rather than
+warm-starting from the answer. See `qual_import_bundle()`.
 
-`theo_1cmt` is the suite's primary one-compartment **anchor** (re-fit in the
-thread-invariance stage and used as the method-coverage anchor).
+**Identity:**
 
-### theo_1cmt_des — one-compartment oral, explicit ODEs (real theophylline data)
+- **pair** = `"<model>__<method>"` (e.g. `theophylline__focei`) — computed
+  from `model$name` + `method$est`.
+- **id** = `"<model>__<method>__t<threads>"` (e.g.
+  `theophylline__focei__t1`) — unique; the JSON filename stem and the key
+  used to load references.
 
-The same theophylline model and the same real `theo_sd` data as `theo_1cmt`, but
-written as explicit differential equations rather than the closed-form `linCmt()`
-solver — so the qualification exercises the ODE-solver code path on real data.
-Used verbatim ([`inst/models/theo_1cmt_des.R`](../inst/models/theo_1cmt_des.R)).
-It reaches essentially the same optimum as the solved form (OFV ≈ 116.80).
+## Creating a reference
 
-```r
-ini({
-  tka <- 0.45   # log Ka
-  tcl <- 1      # log CL
-  tv  <- 3.45   # log V
-  eta.ka ~ 0.6
-  eta.cl ~ 0.3
-  eta.v  ~ 0.1
-  add.sd <- 0.7
-})
-model({
-  ka <- exp(tka + eta.ka)
-  cl <- exp(tcl + eta.cl)
-  v  <- exp(tv  + eta.v)
-  d/dt(depot)  <- -ka * depot
-  d/dt(center) <-  ka * depot - cl / v * center
-  cp <- center / v
-  cp ~ add(add.sd)
-})
-```
-
-The dataset is identical to `theo_1cmt` (see the spaghetti plot above).
-
-### PK_2cmt — two-compartment oral
-
-Adds a peripheral compartment (peripheral volume `Vp`, inter-compartmental
-clearance `Q`) to the one-compartment oral model, again via `linCmt()`. The extra
-compartment produces the characteristic bi-phasic decline.
+Import a fit saved with `nlmixr2save`:
 
 ```r
-ini({
-  lka    <- 0.45          # Absorption rate (Ka)
-  lcl    <- 1             # Clearance (CL)
-  lvc    <- 3             # Central volume (V)
-  lvp    <- 5             # Peripheral volume (Vp)
-  lq     <- 0.1           # Inter-compartmental clearance (Q)
-  propSd <- c(0, 0.5)
-  etaLcl ~ 0.1
-  etaLvc ~ 0.1
-})
-model({
-  ka <- exp(lka); cl <- exp(lcl + etaLcl); vc <- exp(lvc + etaLvc)
-  vp <- exp(lvp); q <- exp(lq)
-  Cc <- linCmt()
-  Cc ~ prop(propSd)
-})
+fit <- nlmixr2est::nlmixr2(model, data, est = "focei")
+nlmixr2save::saveFit(fit, "my_fit", zip = TRUE)
+
+ref <- qual_import_bundle("my_fit.zip", model_name = "my_model",
+                          method = "focei", threads = 1L,
+                          description = "one-line model description")
+qual_reference_write(ref, "my_references/my_model__focei__t1.json")
 ```
 
-![PK_2cmt spaghetti plot](figures/PK_2cmt.png)
+`threads` is required — a fit does not record its own rxode2 thread count,
+so the caller asserts the count the bundle was fit at.
 
-### PK_3cmt — three-compartment oral
+## The shipped internal reference set
 
-Two peripheral compartments (`Vp`, `Vp2`, `Q`, `Q2`) — the most parameter-rich of
-the solved PK models, and the slowest to fit.
+The internal set (`inst/references/`) covers the theophylline model
+(`nlmixr2data::theo_sd`) across every estimation method that produces a
+valid fit on the build box, at `threads = 1` (mandatory) and, where the
+build box has at least `qual_default_multi_threads()` (4) cores,
+`threads = 4` (optional). `fsaem` is not currently a supported `nlmixr2est`
+estimation method and is skipped by the generator
+(`data-raw/make-theophylline-references.R`).
 
 ```r
-ini({
-  lka    <- 0.45          # Absorption rate (Ka)
-  lcl    <- 1             # Clearance (CL)
-  lvc    <- 3             # Central volume (V)
-  lvp    <- 5             # First peripheral volume (Vp)
-  lvp2   <- 8             # Second peripheral volume (Vp2)
-  lq     <- 0.1           # First inter-compartmental clearance (Q)
-  lq2    <- 0.5           # Second inter-compartmental clearance (Q2)
-  propSd <- c(0, 0.5)
-  etaLcl ~ 0.1
-  etaLvc ~ 0.1
-})
-model({
-  ka <- exp(lka); cl <- exp(lcl + etaLcl); vc <- exp(lvc + etaLvc)
-  vp <- exp(lvp); vp2 <- exp(lvp2); q <- exp(lq); q2 <- exp(lq2)
-  Cc <- linCmt()
-  Cc ~ prop(propSd)
-})
+qual_catalogue_md(qual_load_references("internal"))
 ```
 
-![PK_3cmt spaghetti plot](figures/PK_3cmt.png)
+| id | model | method | threads | ofv | stochastic | nlmixr2_version |
+| --- | --- | --- | --- | --- | --- | --- |
+| theophylline__agq__t1 | theophylline | agq | 1 | 118.4826 | FALSE | 7.0.1 |
+| theophylline__agq__t4 | theophylline | agq | 4 | 118.4826 | FALSE | 7.0.1 |
+| theophylline__foce__t1 | theophylline | foce | 1 | 116.8037 | FALSE | 7.0.1 |
+| theophylline__foce__t4 | theophylline | foce | 4 | 116.8037 | FALSE | 7.0.1 |
+| theophylline__focei__t1 | theophylline | focei | 1 | 116.8038 | FALSE | 7.0.1 |
+| theophylline__focei__t4 | theophylline | focei | 4 | 116.8038 | FALSE | 7.0.1 |
+| theophylline__focep__t1 | theophylline | focep | 1 | 116.8037 | FALSE | 7.0.1 |
+| theophylline__focep__t4 | theophylline | focep | 4 | 116.8037 | FALSE | 7.0.1 |
+| theophylline__imp__t1 | theophylline | imp | 1 | 116.8271 | TRUE | 7.0.1 |
+| theophylline__imp__t4 | theophylline | imp | 4 | 116.8271 | TRUE | 7.0.1 |
+| theophylline__impmap__t1 | theophylline | impmap | 1 | 116.8292 | TRUE | 7.0.1 |
+| theophylline__impmap__t4 | theophylline | impmap | 4 | 116.8292 | TRUE | 7.0.1 |
+| theophylline__laplace__t1 | theophylline | laplace | 1 | 116.8038 | FALSE | 7.0.1 |
+| theophylline__laplace__t4 | theophylline | laplace | 4 | 116.8038 | FALSE | 7.0.1 |
+| theophylline__qrpem__t1 | theophylline | qrpem | 1 | 116.8324 | TRUE | 7.0.1 |
+| theophylline__qrpem__t4 | theophylline | qrpem | 4 | 116.8324 | TRUE | 7.0.1 |
+| theophylline__saem__t1 | theophylline | saem | 1 | 122.0067 | TRUE | 7.0.1 |
+| theophylline__saem__t4 | theophylline | saem | 4 | 122.0067 | TRUE | 7.0.1 |
 
-### PK_2cmt_no_depot — two-compartment IV, explicit ODEs
+`focei`, `foce`, `focep`, `laplace`, and `agq` are deterministic and
+**strict** — they gate the qualification verdict. `saem`, `imp`, `impmap`,
+and `qrpem` are stochastic; they are re-fit and compared under the looser
+stochastic tolerance and reported, but never gate the verdict.
 
-Two-compartment disposition with **intravenous** dosing (no absorption/depot),
-written as explicit ODEs. Dosing is directly into the central compartment, so the
-profiles start at their peak and decline bi-phasically.
+Regenerate the set (e.g. after an `nlmixr2est` upgrade) with:
 
-```r
-ini({
-  lcl    <- 1             # Clearance (CL)
-  lvc    <- 3             # Central volume (V)
-  lvp    <- 5             # Peripheral volume (Vp)
-  lq     <- 0.1           # Inter-compartmental clearance (Q)
-  propSd <- c(0, 0.5)
-  etaLcl ~ 0.1
-  etaLvc ~ 0.1
-})
-model({
-  cl <- exp(lcl + etaLcl); vc <- exp(lvc + etaLvc)
-  vp <- exp(lvp); q <- exp(lq)
-  kel <- cl/vc; k12 <- q/vc; k21 <- q/vp
-  d/dt(central)     <- -kel * central - k12 * central + k21 * peripheral1
-  d/dt(peripheral1) <-  k12 * central - k21 * peripheral1
-  Cc <- central / vc
-  Cc ~ prop(propSd)
-})
+```sh
+Rscript data-raw/make-theophylline-references.R
 ```
 
-![PK_2cmt_no_depot spaghetti plot](figures/PK_2cmt_no_depot.png)
+## Multi-threaded references are optional
 
----
+Only `t1` is mandatory per method. `tx` (any `threads > 1`) is entirely
+optional, and `qualify()`/`qual_load_references()`/`qual_select()` all work
+correctly with a `t1`-only reference set — nothing requires a `tx` reference
+to exist. An organisation adds coverage at any thread count by importing one
+bundle per count; the tool never invents a multi-threaded result from a
+single-threaded one.
 
-## Disease-progression models
+A user qualifying on a machine with fewer cores than a shipped `t4`
+reference still pins `threads = 4` for that reference (oversubscribed) so
+the comparison stays like-for-like — such a reference is best excluded from
+that machine's run (`qualify(which = "theophylline__focei", ...)` to select
+only the `t1` id, or point `source` at a folder without `tx` references).
 
-### Lee_2011_parkinson_progression
+## Thread-tolerance design
 
-A Parkinson's-disease progression model for the change in the Unified Parkinson's
-Disease Rating Scale (UPDRS) from baseline. It is algebraic in `time`: a linear
-natural-progression slope minus a symptomatic drug effect that approaches an
-asymptote first-order. The binary covariate `ON_TREATMENT` (1 = active drug,
-0 = placebo) modifies both the progression slope and the symptomatic effect, so
-the two arms diverge over time. IIV is carried on the slope and the symptomatic
-effect. Used verbatim (no augmentation).
+Multi-threaded fits can differ across machines/BLAS even at the same thread
+count (non-associative parallel float reductions), so an exact match cannot
+be required for `threads > 1`. The comparison tolerance is keyed to the
+reference's thread count:
 
-```r
-ini({
-  beta0     <- 0.73          # Placebo progression slope (UPDRS/month)
-  beta1     <- -0.3          # Active-drug effect on slope
-  gamma0    <- 1.12          # Placebo asymptotic symptomatic dip (UPDRS)
-  gamma1    <- 1.61          # Active-drug additional symptomatic dip
-  lke0      <- log(1.46)     # Log rate to symptomatic asymptote (1/month)
-  etaslope  ~ 0.47
-  etasymeff ~ 18.61
-  addSd     <- sqrt(8.53)    # Additive residual SD (UPDRS)
-})
-model({
-  slope  <- beta0 + beta1 * ON_TREATMENT + etaslope
-  symeff <- gamma0 + gamma1 * ON_TREATMENT + etasymeff
-  ke0    <- exp(lke0)
-  deltaUPDRS <- slope * time - symeff * (1 - exp(-ke0 * time))
-  deltaUPDRS ~ add(addSd)
-})
-```
+- `threads == 1` → **strict** tolerance
+  (`qual_compare(..., invariance = FALSE)`). Deterministic methods need to
+  reproduce closely, but not to full bit-portability: `qual_reference_refit()`
+  necessarily starts from the reference's `initial_estimates` (the bundle's
+  cold-start priors) rather than a warm start, and a derivative-free
+  optimizer (e.g. `bobyqa`) can land at a measurably different — but fully
+  deterministic — point than the original run even from identical starting
+  conditions and data, particularly for theta/omega estimates near zero.
+  `qual_tolerance()`'s deterministic theta/omega/sigma default (1%) reflects
+  this; `ofv` stays at 0.1% since it is flat near the optimum.
+- `threads > 1` → **looser** tolerance
+  (`qual_compare(..., invariance = TRUE)`), sized for parallel-float
+  variation. `qual_tolerance(invariance = TRUE)` floors at
+  `max(class default, 1%)` — it is never *tighter* than the deterministic
+  default for a class (e.g. `shrink`'s 5% deterministic default stays 5%
+  under invariance, not 1%). Per-quantity `overrides` are available to
+  `qual_compare()` if a specific quantity needs loosening further.
 
-![Lee_2011 spaghetti plot](figures/Lee_2011_parkinson.png)
+Shrinkage is reported in every comparison's detail table but never gates the
+verdict at any thread count: near-zero shrinkage estimates can swing by a
+large *relative* amount from tiny absolute noise, which no percentage
+tolerance can reliably absorb without weakening the check for larger shrink
+values.
 
----
-
-## PKPD models
-
-### Friberg_2002_paclitaxel
-
-The classic Friberg semi-mechanistic model of chemotherapy-induced
-myelosuppression. Paclitaxel two-compartment PK drives a proliferating-precursor
-compartment that feeds a chain of three transit compartments into the circulating
-neutrophil pool (`circ`); the drug lowers proliferation (`edrug = 1 - slopu·Cc`)
-and a `(circ0/circ)^gamma` feedback loop drives recovery and the characteristic
-rebound overshoot. The endpoint is the circulating WBC count with a
-**proportional** residual, so simulated values are non-negative by construction —
-the reason this model was chosen to replace an earlier additive-error progression
-model whose simulated data could dip below zero. IIV is carried on the baseline
-count, mean transit time, and drug-effect slope; the model is used verbatim and
-reads the individual paclitaxel PK as covariate columns (`VC_INDIV`, `CL_INDIV`,
-`VP_INDIV`).
-
-```r
-ini({
-  lcirc0 <- 1.975   # log baseline circulating count (circ0)
-  lmtt   <- 4.820   # log mean transit time (MTT)
-  lslopu <- 3.364   # log drug-effect slope
-  gamma  <- 0.239   # feedback exponent
-  propSd <- 0.286   # proportional residual error
-  etalcirc0 ~ 0.107
-  etalmtt   ~ 0.0296
-  etalslopu ~ 0.176
-})
-model({
-  circ0 <- exp(lcirc0 + etalcirc0)
-  mtt   <- exp(lmtt + etalmtt)
-  slopu <- exp(lslopu + etalslopu)
-  q  <- 204
-  Cc <- central / VC_INDIV
-  edrug <- 1 - slopu * Cc
-  feed  <- (circ0 / circ)^gamma
-  ktr   <- 4 / mtt
-  d/dt(central)     <- -q/VC_INDIV*central - CL_INDIV/VC_INDIV*central + q/VP_INDIV*peripheral1
-  d/dt(peripheral1) <-  q/VC_INDIV*central - q/VP_INDIV*peripheral1
-  d/dt(circ)        <- ktr*precursor4 - ktr*circ
-  d/dt(precursor1)  <- ktr*precursor1*edrug*feed - ktr*precursor1
-  d/dt(precursor2)  <- ktr*precursor1 - ktr*precursor2
-  d/dt(precursor3)  <- ktr*precursor2 - ktr*precursor3
-  d/dt(precursor4)  <- ktr*precursor3 - ktr*precursor4
-  circ(0) <- circ0; precursor1(0) <- circ0; precursor2(0) <- circ0
-  precursor3(0) <- circ0; precursor4(0) <- circ0
-  WBC <- circ
-  WBC ~ prop(propSd)
-})
-```
-
-![Friberg_2002 spaghetti plot](figures/Friberg_2002_paclitaxel.png)
-
----
-
-## Datasets and simulation design
-
-Each model has one permanently frozen dataset under
-[`inst/extdata/`](../inst/extdata). The two theophylline models (`theo_1cmt` and
-`theo_1cmt_des`) share **real** data — the classic `nlmixr2data::theo_sd`
-theophylline set (12 subjects, one oral dose, samples to ~24 h) written out
-verbatim. The simulated `PK_*` datasets are 32 subjects dosed
-across four levels (50/100/150/200 mg) with samples at 0.25–24 h. `Lee` is 40
-subjects over 0–24 months, half randomised to active treatment. `Friberg` is 32
-subjects given a single moderate paclitaxel dose with WBC sampled around the
-~day-9 nadir and recovery to day 28; each subject carries individual paclitaxel
-PK (`VC/CL/VP_INDIV`) as covariate columns, and a `stopifnot(all(DV > 0))` guard
-enforces that the frozen WBC values stay positive. The simulated sets were
-generated once, single-threaded, from the same model used for fitting, at a fixed
-seed. Spaghetti plots above use the Okabe–Ito colourblind-safe palette, colouring
-`PK_*` and `Friberg` profiles by dose and the Lee profiles by treatment arm.
-
----
-
-## Estimation methods
-
-`nlmixr2` exposes 26 estimation methods across six algorithm families. The full
-matrix is catalogued in [`inst/models/methods.csv`](../inst/models/methods.csv)
-and validated against the installed estimator set. This release cuts anchor
-baselines for **19** methods. The deterministic conditional methods `focei`
-(primary), `foce`, and `focep`, plus the integral approximations `laplace` and
-`agq`, are **strict**; the stochastic estimators `saem`, `fsaem`, `imp`,
-`impmap`, and `qrpem` are **informational** (seed-pinned, compared under the
-looser stochastic tolerance, and never gating the verdict). All of these are
-exercised on **both** theophylline anchors — `theo_1cmt` (solved) and
-`theo_1cmt_des` (ODE) — so each method is qualified on both solver paths. The
-nine-strong **optimizer (NLM) family** is qualified on the fixed-effect-only
-anchor `theo_1cmt_fixed`: `bobyqa`/`newuoa`/`uobyqa`/`n1qn1` are **strict**, the
-other five **informational**. Baselines are (re)cut by
-[`data-raw/cut-method-baselines.R`](../data-raw/cut-method-baselines.R). The
-remaining families (nonparametric, machine learning) and the first-order/`nlme`
-linearized methods are a tracked follow-up (see
-[`follow-up-deferred-scope.md`](follow-up-deferred-scope.md)).
-
-### focei — first-order conditional estimation with interaction *(primary)*
-
-The workhorse method. FOCE linearises the model around each subject's conditional
-(empirical Bayes) random effects; the **i** adds the interaction between the
-random effects and the residual error variance. Every model in the registry is
-qualified with `focei`: the strict stage re-fits each model single-threaded and
-compares the objective function value, parameters, standard errors, and shrinkage
-against the shipped baseline.
-
-`nlmixr2qual` pins the **outer optimizer to `bobyqa`** for the conditional FOCE
-methods (via `qual_fit_control()`). The default (`nlminb`) reaches the same
-optimum but emits a tolerance-sensitive "false convergence (8)" advisory there,
-which would make the fingerprint's convergence flag brittle across platforms;
-`bobyqa` exits cleanly with convergence code 0.
-
-### saem — stochastic approximation expectation-maximisation *(anchor)*
-
-The oldest and most robust nonlinear mixed-effects estimation method, and a more
-meaningful second anchor than a FOCE variant. Baselines are cut for `saem` on
-**both** theophylline anchors (`theo_1cmt` and `theo_1cmt_des`) to show the
-qualification machinery covers more than one algorithm family. Because SAEM is **stochastic**, `qual_fit_control()` pins its
-random seed (99) and iteration budget (nBurn 200, nEm 300) so the run is
-reproducible, and it is compared under the looser **stochastic tolerance**
-(`qual_tolerance(stochastic = TRUE)`). It is qualified as **informational**
-(`strict = FALSE` in `methods.csv`): a seeded re-fit on the same machine
-reproduces the baseline exactly, but seeded stochastic estimation is not
-guaranteed to reproduce across platforms, so a SAEM deviation is reported without
-failing the verdict. The method-coverage test (`test-qual-methods.R`) qualifies
-any method that has an anchor baseline.
-
-### Integral approximation and stochastic EM families
-
-Beyond the two anchor methods, this release qualifies the integral-approximation
-methods `laplace` and `agq` and the stochastic estimators `imp`, `impmap`,
-`fsaem`, and `qrpem`, each on **both** theophylline anchors (`theo_1cmt` and
-`theo_1cmt_des`). `laplace` and `agq` are deterministic and reach the same optimum
-as `focei` (OFV ≈ 116.80) with a clean covariance step; they use the same
-`bobyqa` outer optimizer and are **strict**. The four stochastic methods are
-seed-pinned in `qual_fit_control()` — the SAEM family (`saem`, `fsaem`) through
-`saemControl(seed = 99, …)` and the importance-sampling family (`imp`, `impmap`,
-`qrpem`) through `impmapControl(impSeed = 99)` — so a same-machine re-fit
-reproduces the baseline; they are **informational** for the same
-cross-platform reason as `saem`.
-
-### Full method catalogue
-
-`needs_reff = FALSE` optimizer methods fit fixed effects only and are anchored to
-`theo_1cmt_fixed` (a random-effect-free variant); all others anchor to
-`theo_1cmt` (and, for the integral-approximation and stochastic families,
-`theo_1cmt_des` as well).
-
-| Family | Methods | Baseline status |
-|---|---|---|
-| Linearized | `fo`, `foi`, `foce`, `focei`, `focep`, `nlme` | `focei` (primary), `foce`, `focep` cut (strict, both anchors); `fo`/`foi`/`nlme` deferred (error in this env) |
-| Integral approximation | `laplace`, `agq`, `imp`, `impmap` | `laplace`/`agq` cut (strict); `imp`/`impmap` cut (informational) — both anchors |
-| Stochastic EM | `saem`, `fsaem`, `qrpem` | all cut (informational, both anchors) |
-| Nonparametric | `npag`, `npb` | deferred (extraction audit — `npag` observed to fit + extract) |
-| Machine learning | `advi`, `vae` | deferred (needs ELBO/variational extraction) |
-| Optimizer (NLM family) | `nlm`, `nlminb`, `bobyqa`, `newuoa`, `uobyqa`, `n1qn1`, `lbfgsb3c`, `optim`, `nls` | all cut on `theo_1cmt_fixed`; `bobyqa`/`newuoa`/`uobyqa`/`n1qn1` strict, rest informational |
-
-The nonparametric and machine-learning families are assumed to need
-category-specific extraction beyond the standard parametric accessors
-(`parFixedDf`/`omega`/`sigma`) — though `npag` was observed in this environment to
-populate them, so it is a strong candidate to promote after a deliberate
-`qual_extract_fit()` audit. The first-order `fo`/`foi` and `nlme` methods error in
-this environment (control-object rejection / missing `.nlmixrNlmeFun`) and remain
-deferred pending engine changes.
+Stochastic methods are informational at every thread count regardless of
+this tolerance design.

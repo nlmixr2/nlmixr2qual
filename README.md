@@ -1,104 +1,114 @@
 # nlmixr2qual
 
-Reproducibility qualification of an **nlmixr2** installation. `nlmixr2qual`
-re-fits a curated set of `nlmixr2lib` models against a shipped single-threaded
-**canonical baseline**, checks that each installation reproduces the reference
-parameter estimates, objective function value, standard errors and shrinkage
-**within tolerance**, qualifies multi-threaded fitting by a thread-invariance
-check, and renders a Quarto qualification report with an overall **PASS/FAIL**
-verdict.
+Reproducibility qualification of an **nlmixr2** installation. `nlmixr2qual` is
+an **import-based, organisation-extensible** qualification tool: references
+are known-good fits imported from [`nlmixr2save`](https://github.com/nlmixr2/nlmixr2save)
+bundles, stored one-per-file as self-contained JSON. Qualifying an install
+re-fits each reference locally — at the reference's own thread count — and
+compares the fresh result against the stored reference fingerprint, rendering
+a Quarto summary with an overall **PASS/FAIL** verdict.
 
 ## What this qualifies (and what it does not)
 
-This is a **reproducibility** qualification. A PASS means the installation under
-test reproduces the qualified single-threaded canonical reference within
-tolerance. It does **not** assert scientific correctness or accuracy against a
-known ground truth — the baseline is a frozen regression reference, not truth.
+This is a **reproducibility** qualification. A PASS means the installation
+under test reproduces a reference's stored result within tolerance. It does
+**not** assert scientific correctness or accuracy against a known ground
+truth — a reference is a confirmed-good fit, not truth.
 
 Results are **not** guaranteed bit-identical across operating systems, CPU
 architectures, compilers, or BLAS/LAPACK backends. Tolerances (per quantity
 class; see `qual_tolerance()`) absorb that numerical noise, and the full
-environment is recorded in the report for comparison against the baseline
-provenance (`inst/baseline/provenance.json`).
+environment is recorded in the report for comparison against the reference's
+provenance.
 
-## What it checks
+## How it works
 
-- **Version gate** — installed package versions vs. the qualified baseline
-  (`inst/qualified_baseline.csv`: nlmixr2, nlmixr2est, nlmixr2lib, nlmixr2data,
-  rxode2). A mismatch fails the verdict.
-- **Strict stage** — every model in the registry (`inst/models/registry.csv`) is
-  re-fit single-threaded and compared to its canonical baseline fingerprint. Any
-  strict-model deviation beyond tolerance fails the verdict.
-- **Thread-invariance stage** — the anchor models (`PK_1cmt`, `PK_2cmt`) are
-  re-fit multi-threaded and compared to the single-threaded baseline under a
-  looser tolerance. This stage runs in an **isolated child process** and is
-  **informational**: it is reported but does not gate the verdict.
+1. **Create a reference** by fitting and saving a model with `nlmixr2save`,
+   then importing the bundle:
 
-### Models qualified in this release
+   ```r
+   fit <- nlmixr2est::nlmixr2(model, data, est = "focei")
+   nlmixr2save::saveFit(fit, "my_fit", zip = TRUE)
 
-A robust core that fits cleanly and reproducibly single-threaded:
+   ref <- qual_import_bundle("my_fit.zip", model_name = "my_model",
+                             method = "focei", threads = 1L)
+   qual_reference_write(ref, "my_references/my_model__focei__t1.json")
+   ```
 
-| Domain | Models |
-|---|---|
-| popPK | `PK_1cmt`, `PK_2cmt`, `PK_3cmt`, `PK_1cmt_des`, `PK_2cmt_no_depot` (augmented with IIV on CL and Vc) |
-| disease | `Lee_2011_parkinson_progression`, `Hamuro_2017_DMD_6MWT` (verbatim; own IIV) |
+   A fit does not record its rxode2 thread count, so the caller must assert
+   the count the bundle was fit at (`threads =`). By default the reference's
+   starting values (`initial_estimates`) are taken from the bundle's own
+   pre-fit priors (`fit$iniDf0`, preserved by `saveFit()`), not the
+   fitted/post-fit values — this makes a later re-fit reproduce the original
+   optimizer trajectory instead of warm-starting from the answer. Pass a
+   named list/vector or a compiled model object to `initial_estimates` to
+   override this.
 
-The estimation-method coverage matrix (`inst/models/methods.csv`) catalogues all
-26 nlmixr2 estimators across 6 categories; this release ships anchor baselines
-for the reliable conditional-estimation methods (`focei`, `foce`). The remaining
-methods and the heavier literature models (PKPD indirect-response, multi-endpoint,
-ordered-categorical, and multi-drug models) are a tracked follow-up — see
-`docs/`.
+2. **Ship or point to a folder** of JSON references. `nlmixr2qual` ships an
+   internal set under `inst/references/` (see [`docs/references.md`](docs/references.md));
+   an organisation can maintain its own folder of references the same way.
 
-## How to run
+3. **Qualify** the local install:
 
-From the package directory, with the nlmixr2 stack installed:
+   ```r
+   res <- qualify(which = "all", source = "internal")
+   ```
 
-```sh
-Rscript run_qualification.R      # or: qualify.bat   (Windows)
-```
+   or from the shell:
 
-This runs the strict + invariance stages against the shipped baseline, writes the
-report and artifacts to `qualification_output/`, prints `OVERALL: PASS`/`FAIL`,
-and exits non-zero on FAIL (for CI gating).
+   ```sh
+   Rscript run_qualification.R              # internal references
+   Rscript run_qualification.R path/to/dir  # or: qualify.bat (Windows)
+   ```
+
+   For each selected reference, `qualify()` pins the reference's own thread
+   count, re-fits the model locally, and compares the fresh fingerprint
+   against the stored one. Deterministic methods gate the verdict; stochastic
+   methods (SAEM, importance sampling, …) are compared under a looser
+   tolerance and reported but never gate.
+
+   - `which` — `"all"` (default), or a vector of **pairs**
+     (`"<model>__<method>"`, selecting every thread variant) and/or full
+     **ids** (`"<model>__<method>__t<threads>"`).
+   - `source` — `"internal"` (default, the shipped set) or a path to a
+     folder of `.json` references.
+
+## The thread model
+
+Multi-threaded fits can differ across machines/BLAS even at the same thread
+count (non-associative parallel float reductions), so an exact match cannot
+be required for `threads > 1`. Each reference is a single result, **tagged
+with the thread count that produced it**, and is only ever compared against
+a re-fit at that same thread count — single- and multi-threaded results are
+never compared against each other. The comparison tolerance is keyed to the
+reference's thread count:
+
+- `threads == 1` (`t1`) — **strict**, bit-portable tolerance. **Mandatory**:
+  every method ships a `t1` reference.
+- `threads > 1` (e.g. `t4`) — a **looser** tolerance sized for parallel-float
+  variation. **Optional**: a method may or may not have a multi-threaded
+  reference, and the tooling works correctly with a `t1`-only set. The
+  default multi-thread count for the shipped set and for generators is
+  `qual_default_multi_threads()` (4).
+
+An organisation adds coverage at any thread count by importing one bundle
+per count — the tool never invents a multi-threaded result from a
+single-threaded one.
 
 ## Output
 
-Written to `qualification_output/`:
+`Rscript run_qualification.R` writes to `qualification_output/`:
 
-- **`qualification.html`** — the primary Quarto report: executive summary and
-  verdict, environment + version gate, per-model deviation tables, and the
-  thread-invariance section.
-- **`qualification_verdict.txt`** — a single word, `PASS` or `FAIL`.
-- **`qualification_summary.txt`** — the per-model result table and `OVERALL:` line
-  (occamsqual-style plain text for pipeline continuity).
-- **`qualification_bundle.rds`** — the full results object.
-
-## Recutting the baseline (on an nlmixr2 upgrade)
-
-The canonical baseline is deliberately frozen and only recut on purpose — e.g.
-when qualifying a new nlmixr2 stack. The frozen **datasets** are never
-regenerated (`data-raw/simulate-datasets.R` is provenance only and guards
-against overwriting committed data).
-
-```r
-pkgload::load_all(".")
-qual_set_threads(1L)
-qual_capture_baseline(qual_registry())   # writes inst/baseline/*.qs2 + provenance.json
-```
-
-Then update `inst/qualified_baseline.csv` to the versions the new baseline was
-cut with.
+- **`verdict.txt`** — `OVERALL: PASS`/`FAIL` plus a per-reference line
+  (id, thread count, pass/fail, strict/informational).
+- **`qualification.html`** — the Quarto summary report (skipped if the
+  `quarto` package/CLI isn't available).
 
 ## Environment notes
 
 - Locked to **R == 4.6.1**.
-- The strict stage and baseline are single-threaded for determinism. The
-  invariance stage uses a **capped** multi-thread count (`qual_invariance_threads()`,
-  default 4) — the check only needs threads > 1, and oversubscribing a small
-  problem on a many-core machine can crash the OpenMP solver. It runs in an
-  isolated `callr` child process so any solver instability there cannot take down
-  the qualification.
-- The conditional FOCE(i) methods are fit with `outerOpt = "bobyqa"` for a stable,
-  cross-platform convergence signal (the default `nlminb` emits a
-  tolerance-sensitive "false convergence" advisory at the optimum).
+- `R/threads.R` is the only code allowed to set thread counts
+  (`qual_set_threads()`); everything else reads the budget via
+  `qual_inner_threads()`. This keeps process-level parallelism (e.g.
+  testthat workers) and rxode2's OpenMP threads from oversubscribing cores
+  at the same time.
