@@ -1202,11 +1202,11 @@ git commit -m "feat: top-level qualification runner + docs for reference archite
 **Files:**
 - Modify: `.Rbuildignore`, `DESCRIPTION` as needed
 
-- [ ] **Step 1: Ignore data-raw + docs from the build**
+- [x] **Step 1: Ignore data-raw + docs from the build**
 
 Ensure `.Rbuildignore` contains `^data-raw$`, `^docs$`, `^run_qualification\.R$`, `^qualification_output$`.
 
-- [ ] **Step 2: Document + check**
+- [x] **Step 2: Document + check**
 
 Run:
 ```bash
@@ -1215,12 +1215,12 @@ Rscript -e 'res <- rcmdcheck::rcmdcheck(".", args=c("--no-manual","--as-cran"), 
 ```
 Expected: `E=0 W=0` (a benign CRAN-incoming `New submission`/version NOTE is acceptable). Fix any undocumented-export or NAMESPACE warnings.
 
-- [ ] **Step 3: Run the non-live test suite**
+- [x] **Step 3: Run the non-live test suite**
 
 Run: `Rscript -e 'pkgload::load_all("."); testthat::test_dir("tests/testthat")'`
 Expected: all pass (live tests skip without `NLMIXR2QUAL_RUN_LIVE=1`).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add -A
