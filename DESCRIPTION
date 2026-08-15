@@ -14,7 +14,7 @@ License: GPL (>= 3)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Depends:
-    R (== 4.6.1)
+    R (>= 4.6.1)
 Imports:
     jsonlite,
     nlmixr2est,

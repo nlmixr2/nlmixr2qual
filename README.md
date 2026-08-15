@@ -91,7 +91,7 @@ single-threaded one.
 
 ## Environment notes
 
-- Locked to **R == 4.6.1**.
+- Requires **R >= 4.6.1**.
 - `R/threads.R` is the only code allowed to set thread counts
   (`qual_set_threads()`); everything else reads the budget via
   `qual_inner_threads()`. This keeps process-level parallelism (e.g.
