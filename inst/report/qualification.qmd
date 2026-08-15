@@ -1,68 +1,19 @@
 ---
-title: "nlmixr2 Qualification Report"
-format:
-  html:
-    toc: true
-    embed-resources: true
+title: "nlmixr2qual Qualification Summary"
+format: html
 params:
-  bundle: ""
+  result_rds: ""
 ---
 
-```{r setup, include=FALSE}
-bundle <- readRDS(params$bundle)
-knitr::opts_chunk$set(echo = FALSE)
+```{r}
+#| echo: false
+res <- readRDS(params$result_rds)
+knitr::kable(res$summary)
 ```
 
-# Executive summary
-
-**Overall verdict: `r bundle$verdict$verdict`**
-
-This is a *reproducibility* qualification: a PASS means this installation
-reproduces the qualified single-threaded canonical reference within tolerance.
-It does **not** assert scientific correctness or accuracy against a known truth.
-
-Results are not guaranteed bit-identical across operating systems, CPU
-architectures, compilers, or BLAS/LAPACK backends; tolerances absorb that noise
-and the environment is recorded below for comparison against the baseline.
+**`r if (isTRUE(res$overall)) "OVERALL: PASS" else "OVERALL: FAIL"`**
 
 ```{r}
-p <- bundle$provenance
-knitr::kable(data.frame(Field = names(unlist(p)), Value = unlist(p)))
-```
-
-# Environment & version gate
-
-```{r}
-knitr::kable(bundle$version_gate$detail)
-```
-
-# Per-model results
-
-```{r results='asis'}
-for (r in bundle$results) {
-  cat("\n## ", r$model, " (", r$method, ") — ",
-      if (r$pass) "PASS" else "FAIL", "\n\n", sep = "")
-  print(knitr::kable(r$detail))
-}
-```
-
-# Thread-invariance (multi-threaded re-fit vs single-threaded baseline)
-
-```{r results='asis'}
-if (is.null(bundle$invariance)) {
-  cat("Not run.\n")
-} else {
-  for (r in bundle$invariance) {
-    cat("\n## ", r$model, " @ ", r$threads, " threads — ",
-        if (r$pass) "PASS" else "FAIL",
-        if (isTRUE(r$informational)) " (informational)" else "", "\n\n", sep = "")
-    print(knitr::kable(r$detail))
-  }
-}
-```
-
-# Appendix: session info
-
-```{r}
-sessionInfo()
+#| echo: false
+str(res$provenance)
 ```
