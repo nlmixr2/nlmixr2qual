@@ -47,10 +47,17 @@ qual_reference_refit <- function(ref, threads = ref$reference$threads) {
 # optimizer trajectory as the original fit instead of warm-starting from the
 # post-fit values baked into the reconstructed model source. Absent/empty
 # initial_estimates (e.g. a hand-built reference in tests) leaves the model's
-# own ini() values untouched.
+# own ini() values untouched. Names not present in this particular model are
+# skipped rather than erroring -- some methods (e.g. SAEM) can report a
+# bounded parameter under a method-internal alias not shared by the
+# reconstructed model's own ini() block (see .qual_iniDf_to_estimates()); that
+# one parameter then simply keeps the reconstructed model's existing value.
 .qual_apply_initial_estimates <- function(model, initial_estimates) {
   if (is.null(initial_estimates) || !NROW(initial_estimates)) return(model)
   model <- rxode2::rxUiDecompress(model)
-  vals <- stats::setNames(as.numeric(initial_estimates$value), initial_estimates$name)
+  known <- initial_estimates$name %in% model$iniDf$name
+  if (!any(known)) return(model)
+  vals <- stats::setNames(as.numeric(initial_estimates$value[known]),
+                          initial_estimates$name[known])
   rxode2::ini(model, vals)
 }

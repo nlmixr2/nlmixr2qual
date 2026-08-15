@@ -114,16 +114,24 @@ qual_import_bundle <- function(zip, model_name, threads, method = NULL,
   ref
 }
 
-# nlmixr2save::loadFit()-reconstructed fits resolve fit$nlme to the `nlme`
-# package's nlme() function instead of NULL (a freshly-fit object correctly
-# gets NULL) -- an environment-resolution quirk in how the reconstructed `ui`
-# dispatches through rxode2's rxUiGet, not something nlmixr2qual controls.
-# That corrupted value then breaks nlmixr2est's internal $sigma accessor
-# (.sigma() does x$nlme, expects NULL, gets a function). Patch the binding
-# directly so a reconstructed fit's accessors match a fresh fit's.
+# nlmixr2save::loadFit()-reconstructed fits resolve some unset accessor
+# fields to a same-named function elsewhere on the search path instead of
+# NULL (a freshly-fit object correctly gets NULL for these) -- an
+# environment-resolution quirk in how the reconstructed `ui` dispatches
+# through rxode2's rxUiGet/nmObjGet, not something nlmixr2qual controls.
+# Confirmed for:
+#   - fit$nlme -> the nlme package's nlme() function, breaking $sigma
+#     (.sigma() does x$nlme, expects NULL, gets a function)
+#   - fit$message -> base::message(), breaking the convergence fallback in
+#     qual_extract_fit() (does nzchar(fit$message), errors coercing a closure)
+# Patch each binding directly so a reconstructed fit's accessors match a
+# fresh fit's. Extend this list if another method surfaces the same pattern
+# on a different field.
 .qual_patch_loaded_fit <- function(fit) {
-  if (!exists("nlme", envir = fit$env, inherits = FALSE))
-    assign("nlme", NULL, envir = fit$env)
+  for (field in c("nlme", "message")) {
+    if (!exists(field, envir = fit$env, inherits = FALSE))
+      assign(field, NULL, envir = fit$env)
+  }
   invisible(fit)
 }
 
@@ -131,7 +139,17 @@ qual_import_bundle <- function(zip, model_name, threads, method = NULL,
 # iniDf rows are theta (ntheta set) or eta/omega (neta1/neta2 set); there is
 # no separate pre-fit "sigma" category -- residual-error thetas (e.g. add.sd)
 # only become "sigma"-classed post-fit, matching qual_extract_fit()'s params.
+#
+# SAEM's iniDf0 reports bounded thetas (e.g. tcl <- log(c(0, 2.7, 100))) under
+# an internal "rxBoundedTr.<name>" alias with a value on SAEM's own bounded-to-
+# unconstrained transform scale, not the plain parameter's scale the
+# reconstructed model actually uses -- reusing that value as an override would
+# silently apply the wrong number. Since the transform is method-internal and
+# not something nlmixr2qual can safely invert, these rows are dropped; the
+# affected parameter keeps whatever value the reconstructed model already has.
 .qual_iniDf_to_estimates <- function(iniDf) {
+  keep <- !grepl("^rxBoundedTr\\.", iniDf$name)
+  iniDf <- iniDf[keep, , drop = FALSE]
   ptype <- ifelse(!is.na(iniDf$ntheta), "theta", "omega")
   data.frame(name = as.character(iniDf$name), ptype = ptype,
              value = as.numeric(iniDf$est), stringsAsFactors = FALSE)
