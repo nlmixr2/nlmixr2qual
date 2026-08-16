@@ -29,20 +29,21 @@ reference {
 provenance { software, created, source_bundle, nlmixr2save_version }
 ```
 
-`reference$initial_estimates` defaults to the bundle's own pre-fit priors
-(`fit$iniDf0`, preserved by `nlmixr2save::saveFit()`), not the fitted values
-baked into the reconstructed model source — this is what lets a local re-fit
-reproduce the *original* optimizer trajectory (cold start) rather than
-warm-starting from the answer. See `qual_import_bundle()`.
+`reference$initial_estimates` defaults to the source fit's own pre-fit
+priors (`fit$iniDf0`) — preserved directly on a live fit, or by
+`nlmixr2save::saveFit()` on a bundle — not the fitted values baked into the
+reconstructed model source. This is what lets a local re-fit reproduce the
+*original* optimizer trajectory (cold start) rather than warm-starting from
+the answer. See `qual_import_fit()`/`qual_import_bundle()`.
 
 `method$seed` is an optional integer random seed for stochastic methods
 (`saem`, `fsaem`, `imp`, `impmap`, `qrpem`). If present, `qual_reference_refit()`
 injects it into the method-appropriate control object (`saemControl(seed=)`
 for saem/fsaem; `impControl()`/`impmapControl()`/`qrpemControl()`'s
 `impSeed=` for imp/impmap/qrpem), making a same-seed re-fit exactly
-reproducible rather than only tolerance-compared. `qual_import_bundle()`'s
-`seed` argument sets it explicitly; if omitted, it is read off the bundle's
-own fit control when the bundle was itself fit with one.
+reproducible rather than only tolerance-compared. Both import functions'
+`seed` argument sets it explicitly; if omitted, it is read off the source
+fit's own control (`fit$control`) when it was itself fit with one.
 
 **Identity:**
 
@@ -54,10 +55,20 @@ own fit control when the bundle was itself fit with one.
 
 ## Creating a reference
 
-Import a fit saved with `nlmixr2save`:
+Two ways in, sharing the same underlying logic (seed/`initial_estimates`
+resolution, reference assembly): `qual_import_fit()` from a live fit object
+still in the R session, or `qual_import_bundle()` from an `nlmixr2save`
+bundle (someone else's fit, or one from an earlier session).
 
 ```r
 fit <- nlmixr2est::nlmixr2(model, data, est = "focei")
+
+ref <- qual_import_fit(fit, model_name = "my_model", threads = 1L,
+                       description = "one-line model description")
+qual_reference_write(ref, "my_references/my_model__focei__t1.json")
+```
+
+```r
 nlmixr2save::saveFit(fit, "my_fit", zip = TRUE)
 
 ref <- qual_import_bundle("my_fit.zip", model_name = "my_model",
@@ -66,8 +77,17 @@ ref <- qual_import_bundle("my_fit.zip", model_name = "my_model",
 qual_reference_write(ref, "my_references/my_model__focei__t1.json")
 ```
 
-`threads` is required — a fit does not record its own rxode2 thread count,
-so the caller asserts the count the bundle was fit at.
+`threads` is required in both — neither a fit nor a bundle records its own
+rxode2 thread count, so the caller asserts the count it was produced at.
+
+`qual_import_fit()` generates the reference's model source with
+[`nlmixr2save::saveFitItem()`](https://github.com/nlmixr2/nlmixr2save) (the
+same code `saveFit()` itself uses to write a bundle's `-ui.R`) directly on
+`fit$ui`, and reads the input data and estimation method straight off the
+fit (`fit$origData`, `fit$est`) — no `saveFit()`/`loadFit()` round-trip, and
+none of `loadFit()`'s reconstructed-fit accessor quirks (see
+`qual_import_bundle()`'s implementation notes) apply, since the fit object is
+never reconstructed.
 
 ## The shipped internal reference set
 

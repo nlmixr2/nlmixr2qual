@@ -14,11 +14,20 @@ environment is recorded in the report for comparison against the reference.
 
 ## How it works
 
-1. **Create a reference** by fitting and saving a model with `nlmixr2save`,
-   then importing the bundle:
+1. **Create a reference** from a confirmed-good fit, either directly from
+   the fit object still in your R session:
 
    ```r
    fit <- nlmixr2est::nlmixr2(model, data, est = "focei")
+
+   ref <- qual_import_fit(fit, model_name = "my_model", threads = 1L)
+   qual_reference_write(ref, "my_references/my_model__focei__t1.json")
+   ```
+
+   or from a bundle saved (perhaps earlier, perhaps by someone else) with
+   `nlmixr2save`:
+
+   ```r
    nlmixr2save::saveFit(fit, "my_fit", zip = TRUE)
 
    ref <- qual_import_bundle("my_fit.zip", model_name = "my_model",
@@ -26,12 +35,13 @@ environment is recorded in the report for comparison against the reference.
    qual_reference_write(ref, "my_references/my_model__focei__t1.json")
    ```
 
-   A fit does not record its `rxode2` thread count, so the function call must specify
-   the count the bundle was fit at (`threads =`). By default the reference's
-   starting values (`initial_estimates`) are taken from the bundle's own
-   pre-fit priors (`fit$iniDf0`, preserved by `saveFit()`), not the
-   fitted/post-fit values. To override this, you can pass a
-   named list/vector or a compiled model object to `initial_estimates` instead.
+   Neither a fit nor a bundle records its `rxode2` thread count, so the
+   import call must specify the count the fit/bundle was produced at
+   (`threads =`). By default the reference's starting values
+   (`initial_estimates`) are taken from the fit's own pre-fit priors
+   (`fit$iniDf0`), not the fitted/post-fit values. To override this, you can
+   pass a named list/vector or a compiled model object to `initial_estimates`
+   instead.
 
 2. **Point to a folder** of JSON references. `nlmixr2qual` ships an
    internal default set under `inst/references/` (see [`docs/references.md`](docs/references.md));

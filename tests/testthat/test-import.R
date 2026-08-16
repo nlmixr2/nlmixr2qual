@@ -55,3 +55,42 @@ test_that("no seed is captured for a method that was not fit with one", {
                             method = "focei", threads = 1L)
   expect_null(ref$method$seed)
 })
+
+test_that("import_fit builds a valid reference directly from a live fit object", {
+  skip_if_no_live()
+  fit <- fresh_fit(est = "focei", threads = 1L)
+  ref <- qual_import_fit(fit, model_name = "theophylline", threads = 1L,
+                         description = "1-cmt oral PK")
+  expect_true(qual_reference_validate(ref))
+  expect_equal(ref$method$est, "focei")     # inferred from fit$est, not supplied
+  expect_equal(ref$reference$threads, 1L)
+  expect_equal(ref$id, "theophylline__focei__t1")
+  expect_gt(nrow(ref$data$records), 100)    # embedded data (fit$origData)
+  expect_true(any(ref$reference$params$ptype == "omega"))
+  expect_true(ref$reference$converged)
+  e <- new.env(); eval(parse(text = ref$model$code), envir = e)
+  expect_true(exists("theophylline", envir = e))  # model source reconstructs
+})
+
+test_that("import_fit requires an explicit thread count", {
+  skip_if_no_live()
+  fit <- fresh_fit(est = "focei", threads = 1L)
+  expect_error(qual_import_fit(fit, model_name = "theophylline"), "threads")
+})
+
+test_that("import_fit's reference re-fits and reproduces the source fit's OFV", {
+  skip_if_no_live()
+  fit <- fresh_fit(est = "focei", threads = 1L)
+  ref <- qual_import_fit(fit, model_name = "theophylline", threads = 1L)
+  fp <- qual_reference_refit(ref)
+  expect_equal(fp$ofv, fit$objf, tolerance = 1e-3)
+})
+
+test_that("import_fit captures a seed already present in a live fit's control", {
+  skip_if_no_live()
+  fit <- fresh_fit(est = "saem", threads = 1L,
+                   control = nlmixr2est::saemControl(seed = 321L, nBurn = 5, nEm = 5))
+  ref <- qual_import_fit(fit, model_name = "theophylline", threads = 1L)
+  expect_equal(ref$method$est, "saem")
+  expect_equal(ref$method$seed, 321L)
+})

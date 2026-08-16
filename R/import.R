@@ -93,12 +93,90 @@ qual_import_bundle <- function(zip, model_name, threads, method = NULL,
   seed <- .qual_resolve_seed(seed, fit, method)
   setwd(old)
 
+  .qual_build_reference(fit = fit, model_name = model_name, model_code = model_code,
+                        data_name = tools::file_path_sans_ext(basename(zip)),
+                        records = records, method = method, threads = threads,
+                        control = control, description = description,
+                        category = category, seed = seed, fp = fp, ie = ie,
+                        source_bundle = basename(zip))
+}
+
+#' Import a live nlmixr2 fit object as a thread-tagged qualification reference
+#'
+#' The in-memory alternative to [qual_import_bundle()]: builds a reference
+#' directly from a fit object already in the R session, with no
+#' `nlmixr2save::saveFit()`/`loadFit()` round-trip. The model source is
+#' generated with [nlmixr2save::saveFitItem()] (the same code `saveFit()`
+#' itself uses to write a bundle's `-ui.R`), and the input data and
+#' estimation method are read directly off the fit (`fit$origData`,
+#' `fit$est`). A fit does not record its rxode2 thread count, so `threads`
+#' must be supplied by the caller (the count the fit was produced at).
+#' @param fit A fitted nlmixr2 object (e.g. from [nlmixr2est::nlmixr2()]).
+#' @param model_name Human name for the model (used in the reference id).
+#' @param threads Integer thread count the fit was produced at (REQUIRED).
+#' @param method Optional est method override; default read from `fit$est`.
+#' @param control Optional named list of fit-control settings for re-fits.
+#' @param description Optional model description string.
+#' @param stochastic Optional logical; default inferred from the method.
+#' @param category Optional method-family label for tolerance reporting.
+#' @param seed Optional integer random seed for stochastic methods; see
+#'   [qual_import_bundle()]'s `seed` argument (same resolution rules, reading
+#'   off `fit$control` when not supplied explicitly).
+#' @param initial_estimates Starting values for re-fitting this reference;
+#'   see [qual_import_bundle()]'s `initial_estimates` argument (same
+#'   defaulting to `fit$iniDf0`).
+#' @return A reference list (see [qual_reference_write()]).
+#' @export
+qual_import_fit <- function(fit, model_name, threads, method = NULL,
+                            control = NULL, description = "",
+                            stochastic = NULL, category = "",
+                            seed = NULL, initial_estimates = NULL) {
+  if (missing(threads) || is.null(threads) || is.na(threads))
+    stop("qual_import_fit(): `threads` (fit thread count) is required")
+  threads <- as.integer(threads)
+
+  if (is.null(method)) method <- fit$est
+  stopifnot(is.character(method), nzchar(method))
+
+  # Same reconstruction-script generator nlmixr2save::saveFit() itself uses
+  # for a bundle's -ui.R, called directly on the live fit's $ui -- already
+  # parameterized on `name`, so (unlike qual_import_bundle()'s bundle path)
+  # no post-hoc renaming is needed.
+  tmpbase <- tempfile("qualfit-")
+  on.exit(unlink(paste0(tmpbase, "-", model_name, ".R")), add = TRUE)
+  ok <- nlmixr2save::saveFitItem(fit$ui, model_name, tmpbase)
+  if (!isTRUE(ok))
+    stop("qual_import_fit(): failed to generate model source from fit$ui")
+  model_code <- paste(readLines(paste0(tmpbase, "-", model_name, ".R"), warn = FALSE),
+                      collapse = "\n")
+
+  records <- as.data.frame(fit$origData, stringsAsFactors = FALSE)
+
+  if (is.null(stochastic)) stochastic <- .qual_method_is_stochastic(method)
+  fp <- qual_extract_fit(fit, model = model_name, method = method,
+                         category = category, stochastic = stochastic,
+                         threads = threads)
+  ie <- .qual_resolve_initial_estimates(initial_estimates, fit)
+  seed <- .qual_resolve_seed(seed, fit, method)
+
+  .qual_build_reference(fit = fit, model_name = model_name, model_code = model_code,
+                        data_name = model_name, records = records, method = method,
+                        threads = threads, control = control, description = description,
+                        category = category, seed = seed, fp = fp, ie = ie,
+                        source_bundle = NA_character_)
+}
+
+# Shared reference-assembly step for qual_import_bundle() and qual_import_fit():
+# both resolve (fp, ie, seed) their own way, then hand off here to build the
+# common reference list structure.
+.qual_build_reference <- function(fit, model_name, model_code, data_name, records,
+                                  method, threads, control, description, category,
+                                  seed, fp, ie, source_bundle) {
   ref <- list(
     schema_version = "1.0.0",
     id = NA_character_,                    # filled below via qual_reference_id
     model = list(name = model_name, code = model_code, description = description),
-    data = list(name = tools::file_path_sans_ext(basename(zip)),
-                records = records),
+    data = list(name = data_name, records = records),
     method = list(est = method, control = control, seed = seed),
     reference = list(threads = threads, ofv = fp$ofv, params = fp$params,
                      initial_estimates = ie,
@@ -111,7 +189,7 @@ qual_import_bundle <- function(zip, model_name, threads, method = NULL,
                       rxode2 = .qual_pkg_ver("rxode2"),
                       R = as.character(getRversion())),
       created = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"),
-      source_bundle = basename(zip),
+      source_bundle = source_bundle,
       nlmixr2save_version = .qual_pkg_ver("nlmixr2save")))
   ref$id <- qual_reference_id(ref)
   ref
