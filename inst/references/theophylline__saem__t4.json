@@ -3,8 +3,8 @@
   "id": "theophylline__saem__t4",
   "model": {
     "name": "theophylline",
-    "code": "theophylline <- function () \n{\n    ini({\n        tka <- 0.453802412582152\n        tcl <- c(-Inf, 1.01209680211971, 4.60517018598809)\n        tv <- 3.45202426554868\n        add.sd <- c(0, 0.699685806781997)\n        eta.ka ~ 0.394628952012243\n        eta.cl ~ 0.0727248281006164\n        eta.v ~ 0.0172642582940483\n    })\n    model({\n        ka <- exp(tka + eta.ka)\n        cl <- exp(tcl + eta.cl)\n        v <- exp(tv + eta.v)\n        linCmt() ~ add(add.sd)\n    })\n}\ntheophylline <- rxode2::rxode2(theophylline)\ntheophylline <- rxode2::rxUiDecompress(theophylline)\nassign(\"modelName\", \".newUi\", envir=, theophylline)\nrm(\"model\", envir=theophylline)\ntheophylline <- rxode2::rxUiCompress(theophylline)\n",
-    "description": "1-compartment oral PK, theophylline"
+    "code": "theophylline <- function () \n{\n    ini({\n        tka <- 0.45881245549028\n        tcl <- 1.010967311822\n        tv <- 3.45431062761904\n        add.sd <- c(0, 0.697863140585695)\n        eta.ka ~ 0.402631413692042\n        eta.cl ~ 0.0710204505019514\n        eta.v ~ 0.0189038359673314\n    })\n    model({\n        ka <- exp(tka + eta.ka)\n        cl <- exp(tcl + eta.cl)\n        v <- exp(tv + eta.v)\n        linCmt() ~ add(add.sd)\n    })\n}\ntheophylline <- rxode2::rxode2(theophylline)\ntheophylline <- rxode2::rxUiDecompress(theophylline)\nassign(\"modelName\", \"one.cmt.saem\", envir=, theophylline)\nrm(\"model\", envir=theophylline)\ntheophylline <- rxode2::rxUiCompress(theophylline)\n",
+    "description": "1-compartment oral PK, theophylline (tcl unbounded, avoids SAEM's rxBoundedTr reparameterization)"
   },
   "data": {
     "name": "theophylline_saem_t4",
@@ -25,26 +25,26 @@
   },
   "reference": {
     "threads": 4,
-    "ofv": 122.006692518555,
+    "ofv": 122.843574743212,
     "params": {
       "name": ["tka", "tcl", "tv", "add.sd", "eta.ka", "eta.cl", "eta.v"],
       "ptype": ["theta", "theta", "theta", "theta", "omega", "omega", "omega"],
-      "estimate": [0.453802412582152, 1.01209680211971, 3.45202426554868, 0.699685806781997, 0.394628952012243, 0.0727248281006164, 0.0172642582940483],
-      "se": [0.191758639600444, 0.0850610208323624, 0.0450636349313867, 0.050239760073943, null, null, null],
-      "rse": [42.2559762318871, 8.40443529257405, 1.30542636623744, 7.18033145548661, null, null, null]
+      "estimate": [0.45881245549028, 1.010967311822, 3.45431062761904, 0.697863140585695, 0.402631413692042, 0.0710204505019514, 0.0189038359673314],
+      "se": [0.189629757228561, 0.0820024031471029, 0.0446509589745068, 0.0471796343605965, null, null, null],
+      "rse": [41.3305600053786, 8.11128136272928, 1.29261562690682, 6.76058550978922, null, null, null]
     },
     "initial_estimates": {
-      "name": ["tka", "tv", "add.sd", "eta.ka", "eta.cl", "eta.v"],
-      "ptype": ["theta", "theta", "theta", "omega", "omega", "omega"],
-      "value": [0.45, 3.45, 0.7, 0.6, 0.3, 0.1]
+      "name": ["tka", "tcl", "tv", "add.sd", "eta.ka", "eta.cl", "eta.v"],
+      "ptype": ["theta", "theta", "theta", "theta", "omega", "omega", "omega"],
+      "value": [0.45, 0.993251773010283, 3.45, 0.7, 0.6, 0.3, 0.1]
     },
     "shrink": {
       "name": ["eta.ka", "eta.cl", "eta.v", "IWRES"],
       "stype": ["eta", "eta", "eta", "eta"],
-      "value": [0.00201316888310641, 0.00316027640210074, -0.000147255285192073, 2.1029007131505]
+      "value": [0.00194264162954692, -3.00186432838564e-05, -3.01235202227997e-05, -0.0575074698038222]
     },
     "converged": true,
-    "covMethod": "linFim",
+    "covMethod": "sa",
     "stochastic": true,
     "category": ""
   },
@@ -55,7 +55,7 @@
       "rxode2": "5.1.6",
       "R": "4.6.1"
     },
-    "created": "2026-08-15T14:04:44+0200",
+    "created": "2026-08-15T20:09:38+0200",
     "source_bundle": "theophylline_saem_t4.zip",
     "nlmixr2save_version": "0.2.0"
   }

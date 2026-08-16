@@ -13,6 +13,24 @@ one.cmt <- function() {
           linCmt() ~ add(add.sd) })
 }
 
+# saem/fsaem-only variant: tcl has no explicit bound (log(2.7) instead of
+# log(c(0, 2.7, 100))). SAEM internally reparameterizes a BOUNDED theta onto
+# its own unconstrained transform scale, reporting it in fit$iniDf0 only
+# under an internal "rxBoundedTr.tcl" alias whose value nlmixr2qual cannot
+# safely map back to tcl's own scale -- qual_import_bundle() drops that entry
+# rather than risk applying the wrong number, so the SAEM re-fit previously
+# couldn't reset tcl to its true cold-start prior (see docs/references.md).
+# An unbounded tcl sidesteps the reparameterization entirely: cl <- exp(tcl +
+# eta.cl) is already positive-constrained by construction, so the explicit
+# bound was never load-bearing for model validity, only for the optimizer's
+# search region.
+one.cmt.saem <- function() {
+  ini({ tka <- 0.45; tcl <- log(2.7); tv <- 3.45
+        eta.ka ~ 0.6; eta.cl ~ 0.3; eta.v ~ 0.1; add.sd <- 0.7 })
+  model({ ka <- exp(tka + eta.ka); cl <- exp(tcl + eta.cl); v <- exp(tv + eta.v)
+          linCmt() ~ add(add.sd) })
+}
+
 # Methods confirmed to fit theophylline in prior work. Stochastic ones
 # (saem/fsaem/imp/impmap/qrpem) qualify as informational. Extend as coverage grows.
 methods <- c("focei", "foce", "focep", "laplace", "agq",
@@ -42,17 +60,21 @@ for (nthr in thread_counts) {
     message("fitting theophylline / ", m, " @ ", nthr, " thread(s)")
     rxode2::rxClean(); rxode2::setRxThreads(nthr)
     ctl <- .qual_stochastic_control(m)
+    model <- if (m %in% c("saem", "fsaem")) one.cmt.saem else one.cmt
     fit <- tryCatch(
-      if (is.null(ctl)) nlmixr2(one.cmt, theo_sd, est = m)
-      else nlmixr2(one.cmt, theo_sd, est = m, control = ctl),
+      if (is.null(ctl)) nlmixr2(model, theo_sd, est = m)
+      else nlmixr2(model, theo_sd, est = m, control = ctl),
       error = function(e) { message("  skip: ", conditionMessage(e)); NULL })
     if (is.null(fit)) next
     old <- setwd(tmp); base <- paste0("theophylline_", m, "_t", nthr)
     unlink(paste0(base, ".zip")); nlmixr2save::saveFit(fit, base, zip = TRUE)
     setwd(old)
+    description <- if (m %in% c("saem", "fsaem"))
+      "1-compartment oral PK, theophylline (tcl unbounded, avoids SAEM's rxBoundedTr reparameterization)"
+    else "1-compartment oral PK, theophylline"
     ref <- qual_import_bundle(file.path(tmp, paste0(base, ".zip")),
                               model_name = "theophylline", method = m, threads = nthr,
-                              description = "1-compartment oral PK, theophylline")
+                              description = description)
     qual_reference_write(ref, file.path(outdir, paste0(ref$id, ".json")))
   }
 }

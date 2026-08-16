@@ -101,23 +101,31 @@ qual_catalogue_md(qual_load_references("internal"))
 | theophylline__laplace__t4 | theophylline | laplace | 4 | 116.8038 | FALSE | 7.0.1 |
 | theophylline__qrpem__t1 | theophylline | qrpem | 1 | 116.8727 | TRUE | 7.0.1 |
 | theophylline__qrpem__t4 | theophylline | qrpem | 4 | 116.8727 | TRUE | 7.0.1 |
-| theophylline__saem__t1 | theophylline | saem | 1 | 122.0067 | TRUE | 7.0.1 |
-| theophylline__saem__t4 | theophylline | saem | 4 | 122.0067 | TRUE | 7.0.1 |
+| theophylline__saem__t1 | theophylline | saem | 1 | 122.8436 | TRUE | 7.0.1 |
+| theophylline__saem__t4 | theophylline | saem | 4 | 122.8436 | TRUE | 7.0.1 |
 
 `focei`, `foce`, `focep`, `laplace`, and `agq` are deterministic and
 **strict** — they gate the qualification verdict. `saem`, `imp`, `impmap`,
 and `qrpem` are stochastic; they are re-fit and compared under the looser
 stochastic tolerance and reported, but never gate the verdict. All four are
 seed-pinned (seed 99, via `data-raw/make-theophylline-references.R`'s
-`.qual_stochastic_control()`) for same-machine reproducibility; `imp`,
-`impmap`, and `qrpem` reproduce cleanly under the stochastic tolerance.
-`saem` still deviates slightly even seeded: its bounded `tcl` theta is
-reported under an internal `rxBoundedTr.tcl` alias on a transform scale
-`nlmixr2qual` cannot safely invert (see `initial_estimates` above), so the
-re-fit starts `tcl` from a slightly different point than the original fit
-did, and SAEM's stochastic trajectory diverges from there even with an
-identical seed. It stays informational either way, so this does not affect
-the overall verdict.
+`.qual_stochastic_control()`) for same-machine reproducibility, and all four
+reproduce cleanly (bit-identical OFV) under the pinned seed.
+
+`saem`/`fsaem` fit a slightly different model than the other eight methods:
+`tcl` (clearance) has no explicit bound (`log(2.7)` instead of
+`log(c(0, 2.7, 100))`; `one.cmt.saem` in the generator). SAEM internally
+reparameterizes a *bounded* theta onto its own unconstrained transform scale
+and reports it in `fit$iniDf0` only under an internal `rxBoundedTr.tcl`
+alias, whose value is on that transform's scale rather than `tcl`'s own —
+`nlmixr2qual` cannot safely invert it, so it used to drop that entry rather
+than risk applying the wrong number, leaving `tcl` unable to reset to its
+true cold-start prior and the seeded re-fit unable to reproduce the original
+run. An unbounded `tcl` sidesteps the reparameterization entirely (`cl <-
+exp(tcl + eta.cl)` is already positive-constrained by construction, so the
+bound was never load-bearing for model validity, only for the optimizer's
+search region) and `fit$iniDf0` reports a plain `tcl` like every other
+method.
 
 Regenerate the set (e.g. after an `nlmixr2est` upgrade) with:
 

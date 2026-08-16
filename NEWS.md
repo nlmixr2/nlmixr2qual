@@ -36,6 +36,13 @@ the stored reference fingerprint.
   `qual_reference_refit()` injects a stored seed into the method-appropriate
   control object, making a same-seed re-fit exactly reproducible. The
   shipped internal set's stochastic references are now seed-pinned (seed
-  99); `imp`/`impmap`/`qrpem` reproduce cleanly, `saem` still deviates
-  slightly due to its bounded `tcl` theta's internal reparameterization (see
-  `docs/references.md`) but remains informational either way.
+  99) and all four reproduce cleanly (bit-identical OFV).
+- `saem`/`fsaem`'s shipped model now fits `tcl` unbounded (`one.cmt.saem` in
+  `data-raw/make-theophylline-references.R`), avoiding SAEM's internal
+  bounded-theta reparameterization (`rxBoundedTr.tcl`) that previously kept
+  the seeded re-fit from resetting `tcl` to its true cold-start prior. `saem`
+  now reproduces exactly, like every other shipped method (see
+  `docs/references.md`).
+- The HTML report (`qual_summary_report()`) now includes a per-reference
+  parameter/precision/OFV comparison table (reference vs. local re-fit),
+  not just the coarse per-reference summary.
